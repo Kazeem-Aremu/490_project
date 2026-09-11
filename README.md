@@ -2,9 +2,9 @@
 
 ## Author:
 
-. Nyles Burton
-. Kazeem Aremu
-. Portia 
+- Nyles Burton
+- Kazeem Aremu
+- Portia 
 
 
 ## Teacher:
