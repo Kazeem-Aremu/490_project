@@ -4,7 +4,9 @@
 
 - Nyles Burton
 - Kazeem Aremu
-- Portia 
+- Portia Ogbuja
+- Faith Hall
+- Osaosemwen Osifo
 
 
 ## Teacher:
