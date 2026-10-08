@@ -1,7 +1,9 @@
 # 490_project
 
-## Author:
+## Authors:
+### Team 1
 
+### Team 2
 - Nyles Burton
 - Kazeem Aremu
 - Portia Ogbuja
