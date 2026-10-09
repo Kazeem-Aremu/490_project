@@ -7,7 +7,7 @@ This document will show the structure of the messages between the systems. This 
  - Message: "onLogin"
     - UID: "12345678910"
 
-### Server Response 
+#### Server Response 
 
  - Message: "onLogin"
     - UID: "12345678910"
@@ -17,7 +17,7 @@ This document will show the structure of the messages between the systems. This 
 - Message: "getDasboard"
     - UID: "12345678910"
 
-### Server Response
+#### Server Response
 - Message: "getDasboard"
     - courseInfo:
         - averageScore: "80"
@@ -50,7 +50,7 @@ This document will show the structure of the messages between the systems. This 
     - UID: "12345678910"
     - AssignmentID: "987654"
 
-### Server Response
+#### Server Response
 - Message: "getReportInfo"
     - mainReport: "The system judged this submission and found that the following improvements can be made..."
     - qualityScore: "75"
@@ -67,7 +67,7 @@ This document will show the structure of the messages between the systems. This 
 
 ## getMessage
 
-## server
+#### server response
 - Message: "getMessage"
     - messageFromAI
     - Timestamp
@@ -82,7 +82,7 @@ This document will show the structure of the messages between the systems. This 
 
 ## onPassPathB
 
-## Server
+#### Server
 - Message: "onPassPathB"
     - passStatus: "true"
     - Evaluation: 
