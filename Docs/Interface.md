@@ -7,6 +7,7 @@ This document proposes and details the interfaces between the different pages an
 1. OnLogin 
 
 This function accepts the login cookie and/or the UID and then uses them to get basic account information from the database to send back to the client.
+
     - Parameters
         - login Cookie/UID
     - Outputs
@@ -20,6 +21,7 @@ This function accepts the login cookie and/or the UID and then uses them to get 
 2. getDashboard
 
 This function responds to the client’s request by sending a basic list of course info and assignment names.
+
     - parameters
         - UID
     - Outputs
@@ -33,6 +35,7 @@ This function responds to the client’s request by sending a basic list of cour
 3. uploadAssignment 
 
 This functuion takes uploaded assignments and stores them in Supabase's storage options.
+
     - Parameters
         -This path allows teachers to upload an assignment and send it to the server for storage in the database..
     - Parameters
@@ -47,18 +50,19 @@ This functuion takes uploaded assignments and stores them in Supabase's storage 
 
 4. UploadSubmission
 
-    This function lets students submit their assignments
+This function lets students submit their assignments.
+   
     - Parameters
         - Submission Files(.Py, .txt, Etc)
         - UID
-
     - Outputs
         - Save submission File to the storage
         - Saves a link to the resource in the assignment’s database entry.
 
-5. getAssignment
+6. getAssignment
 
 The server gets the assignment record from the database.
+
     - Parameters
         - AssignmentID, CourseID
     - Outputs 
@@ -68,6 +72,7 @@ The server gets the assignment record from the database.
 6. GetReportInfo
 
 This function requests detailed report information from the Server to display to the user.
+
     - Parameters
         - Course ID
         - UID 
@@ -89,6 +94,7 @@ Receives messages from the client and sends it to the AI API.
 8. getMessage
 
 Gets the message response from the AI API
+
     - Parameters
         - Message from User
         - TimeStamp
@@ -119,6 +125,7 @@ Verifies that the student has finished path B  or reached a stopping point.
 1. Onlogin
 
 Sends the user’s login either to the server or directly to Supabase for verification. Receives a login cookie in response.
+
     - Parameters
         - Password
         - UserName
@@ -130,18 +137,21 @@ Sends the user’s login either to the server or directly to Supabase for verifi
 1. getDashboard
 
 This function requests the sever to send a general set of assignments and class information without requesting specifics so as not to bloat the client with unnecessary info.
+
     - Outputs
         - UID to the server
 
 2. getAssignment
 
 This Function allows a user to select an assignment and then receive information about that assignment.
+
     - Parameters
         - AssignmentID, CourseID
 
 3. UploadAssignment
 
 This path allows teachers to upload an assignment and send it to the server for storage in the database.
+
     - Parameters
         - Assignment File(DOCX, PDF)
         - Assignment Info
@@ -150,7 +160,9 @@ This path allows teachers to upload an assignment and send it to the server for 
             - Extra Details for prompt
 
 4. UploadSubmission
-This function lets students submit their assignments
+
+This function lets students submit their assignments.
+
     -Parameters
         - Submission Files(Py, TXT, Etc)
         - UID
@@ -161,6 +173,7 @@ This function lets students submit their assignments
 1. GetReportInfo
 
 This function requests detailed report information from the Server to display to the user.
+
     - Parameters
         - Course ID
         - UID 
