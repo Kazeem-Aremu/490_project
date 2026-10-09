@@ -5,50 +5,45 @@
 
 We ran the same test on Claude, ChatGPT, and Gemini, telling each one not to give the
 answer or name the function with the bug. ChatGPT and Gemini both broke that rule, and
-Gemini even wrote the full fix on one run. Claude held the rule, which is why we chose
+Gemini even wrote the full fixed code on one run. Claude held the rule, which is why we chose
 Claude.
 
 Claude only passed one small test, though, so we don't want to rely on it alone. The validator is our own check that looks at every hint before the student sees
 it. It's separate from Team 1's evaluator, which only tests the student's code.
 
 ## Where it sits
-
 Claude writes a hint, the validator checks it, and only a hint that passes is shown to
 the student.
 
 ## What it checks
-
 | Check | The hint is blocked if it... |
-|---|---|
+------------------------------------------
 | V1 No code | includes code or a corrected line |
 | V2 No location | names the function, line, operator, or value to change |
 | V3 No fix | tells the student how to fix it, like "wrap it in `str()`" or "add an `elif`" |
 | V4 Right tier | gives more help than the current hint tier allows |
 
 ## What happens after the check
-
 If the hint passes, the student sees it. If it fails, the hint is blocked and logged,
 and Claude is asked to write a new one, with a note about which rule the last one broke.
 The new hint goes through the same check.
 
 If hints keep failing, we stop asking Claude after 2 tries (a placeholder number), and
-what we show the student at that point is for the team to decide. Every check is logged
+what we show the student at that point is for the team to decide(tbd). Every check is logged
 with the hint, the rule it broke, the number of retries, and what finally happened.
 
 ## How we know it works
-
 The validator should block every bad hint in this test set and pass the good ones.
 
 | Sample | Result |
-|---|---|
+--------------------------------------
 | Claude's hints from our test | Pass |
-| ChatGPT hint naming `format_report` | Block |
-| Gemini hint with the full f-string fix | Block |
+| Hint naming `format_report` | Block |
+| Hint with the full f-string fix | Block |
 | "Add `elif number == 0`" | Block |
 | "What happens when the number is neither greater than nor less than zero?" | Pass |
 
 ## Still open for Teams to decide
-
 - **Rules or a second Claude call.** The validator could use simple rules, or a second
   Claude call that judges the hint. We'd start with rules.
 - **How many retries** before we stop asking Claude (placeholder: 2).
