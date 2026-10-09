@@ -1,7 +1,27 @@
-# Team 2 Readiness Check
+Team 2 Readiness Check
 
-**Team 2 CSDP 490**
+Team 2 CSDP 490**
 
 ##summary 
 
 Week 5 to 7 deliverable is a riew readiness check of what team 2 did from their uml diagrams which designed the path B 
+
+
+Team 2 Readiness Check
+
+Course: CSDP 490 Team: Team 2 Prepared by: Kazeem Aremu (Member E)
+
+Summary
+
+This Week 5–7 deliverable is a review readiness check of Team 2's UML diagrams, which design Path B. It confirms the design is complete enough for the team to start implementing.
+
+
+Status	Ready. All 6 design criteria are met.
+Acceptance criterion	Design is complete enough to start implementing: every Team 2 feature has a UML diagram
+
+Design: UML Diagrams
+Feature	           Diagram	                                            Owner	Status
+Path B	           Sequence diagram + rule/policy table	                Osa	 Done
+Shared AI actions	 AI Action and Evaluation sequence diagram	          Faith	 Done
+Login / sign-up	   Flowchart                                          	Nyles	Done
+Report page	       UML diagram	                                        Portia Done
