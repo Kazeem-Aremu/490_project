@@ -1,0 +1,654 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Understanding Review Prototype</title>
+<style>
+/* Layout: left rail navigation + content pane; collapses to a top strip on phones. Palette: cool slate, teal accent, semantic green/red/amber/blue for status only. */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --fg:#1a2230; --muted:#5d6877; --line:#d8dee6; --rail:#e9edf2;
+  --accent:#0b6b73; --accent-fg:#ffffff; --accent-soft:#dcefef;
+  --ok:#1d6b3a; --ok-soft:#dff1e4; --bad:#a32a2a; --bad-soft:#f7e0e0; --warn:#85570a; --warn-soft:#faedd0; --info:#1f4f9a; --info-soft:#e0e9f8; --mute-soft:#e6eaef;
+  --code-bg:#f0f3f7;
+  --font-body:'IBM Plex Sans',system-ui,sans-serif; --font-head:'IBM Plex Sans Condensed','IBM Plex Sans',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10151c; --panel:#18202a; --fg:#e5e9ef; --muted:#9aa5b4; --line:#2a3441; --rail:#141b24;
+  --accent:#5cc4cc; --accent-fg:#06262a; --accent-soft:#16363a;
+  --ok:#7fd49a; --ok-soft:#183423; --bad:#f19a9a; --bad-soft:#3d1d1d; --warn:#e8b95a; --warn-soft:#3a2f14; --info:#8db6f2; --info-soft:#1b2b45; --mute-soft:#253040;
+  --code-bg:#111821; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151c; --panel:#18202a; --fg:#e5e9ef; --muted:#9aa5b4; --line:#2a3441; --rail:#141b24;
+  --accent:#5cc4cc; --accent-fg:#06262a; --accent-soft:#16363a;
+  --ok:#7fd49a; --ok-soft:#183423; --bad:#f19a9a; --bad-soft:#3d1d1d; --warn:#e8b95a; --warn-soft:#3a2f14; --info:#8db6f2; --info-soft:#1b2b45; --mute-soft:#253040;
+  --code-bg:#111821; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14.5px;line-height:1.55;padding:0}
+h1,h2,h3{font-family:var(--font-head);margin:0;text-wrap:balance}
+h1{font-size:1.6rem;line-height:1.2} h2{font-size:1.25rem} h3{font-size:1rem}
+p{margin:0 0 10px;max-width:70ch}
+button{font:inherit;cursor:pointer}
+.mono{font-family:var(--font-mono);font-size:.85em}
+.muted{color:var(--muted)}
+.banner{background:var(--warn-soft);color:var(--warn);padding:6px 16px;font-size:.8rem;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:4px;padding:2px 10px;font-size:.78rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-family:var(--font-head);font-weight:700;font-size:1.05rem}
+.who{display:flex;gap:10px;align-items:center;font-size:.88rem;flex-wrap:wrap}
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 100px)}
+.rail{background:var(--rail);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.rail button{text-align:left;background:transparent;border:0;border-radius:5px;padding:8px 10px;color:var(--fg);font-weight:500}
+.rail button:hover{background:var(--line)}
+.rail button.on{background:var(--accent);color:var(--accent-fg)}
+.main{padding:20px 20px 48px;min-width:0;max-width:1000px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px;min-width:0}
+.card h3{margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:14px}
+.grid .card{margin:0}
+.stat{font-family:var(--font-head);font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:.74rem;font-weight:600;padding:1px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-info{background:var(--info-soft);color:var(--info)} .p-mute{background:var(--mute-soft);color:var(--muted)}
+.btn{background:var(--accent);color:var(--accent-fg);border:1px solid var(--accent);border-radius:5px;padding:7px 14px;font-weight:600}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:transparent;color:var(--accent)}
+.btn.sm{padding:3px 10px;font-size:.82rem}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+tr.click{cursor:pointer} tr.click:hover{background:var(--accent-soft)}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:7px 9px;max-width:100%}
+textarea{width:100%;font-family:var(--font-mono);font-size:.85rem;line-height:1.45}
+label{display:block;font-size:.8rem;font-weight:600;margin:10px 0 4px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin:6px 0;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.45}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:9px 12px;border-radius:0 5px 5px 0;margin:10px 0;max-width:78ch}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.note.bad{border-color:var(--bad);background:var(--bad-soft)}
+.note.ok{border-color:var(--ok);background:var(--ok-soft)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{padding:6px 0 6px 14px;border-left:2px solid var(--line);position:relative}
+.tl li::before{content:"";position:absolute;left:-5px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.tl .t{font-size:.76rem;color:var(--muted)}
+.bar{height:8px;background:var(--mute-soft);border-radius:4px;overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--accent)}
+.toast{position:fixed;right:16px;bottom:16px;background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:6px;font-size:.88rem;z-index:20;max-width:80vw}
+.login{max-width:900px;margin:0 auto;padding:40px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;align-items:start}
+.login h1{font-size:2.1rem;margin-bottom:10px}
+.demoacct{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.q{font-size:1.02rem;font-weight:600;margin:6px 0 8px;max-width:70ch}
+.turn{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 12px;font-size:.88rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:760px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
+  .rail button{white-space:nowrap}
+  .main{padding:16px}
+  .kv{grid-template-columns:1fr}
+}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<div id="app"></div>
+
+<script>
+/* ---------- helpers ---------- */
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ago=m=>new Date(Date.now()-m*60000);
+const fmt=d=>d?new Date(d).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const pill=(k,t)=>'<span class="pill p-'+k+'">'+esc(t)+'</span>';
+
+/* ---------- assignment, checks, question bank ---------- */
+const TESTS={
+  c1:c=>/def\s+sum_even\s*\(\s*\w+\s*\)/.test(c),
+  c2:c=>/%\s*2\s*==\s*0/.test(c),
+  c3:c=>/return\s+\S/.test(c),
+  c4:c=>/\bfor\b|\bwhile\b|\bsum\s*\(/.test(c),
+  c5:c=>/=\s*0\b|\bsum\s*\(/.test(c)
+};
+const HINTS={
+  c1:['Check the name and the parameters of your function against the assignment.','The function must be named exactly sum_even and take one list argument.','Start with a line that begins with def and names the function and its one parameter.'],
+  c2:['Test your function with a list that has both odd and even numbers. Which ones get added?','Look at the condition inside your loop. Which remainder identifies an even number?','The remainder of an even number divided by 2 should be compared with zero.'],
+  c3:['Does your function give a value back to the caller?','Printing a value is not the same as returning it.','Add a return statement at the end that gives back the running total.'],
+  c4:['How does your function look at every item in the list?','You need to visit each number once. Python has two common loop forms.','Use a for loop over the list, or a sum over a comprehension.'],
+  c5:['What should the function give back for an empty list?','Think about what value a running total has before any number is added.','Make sure the total has a starting value of zero.']
+};
+const BANK={
+ A:{name:'Loop control',
+  primary:{q:'Walk through what happens inside your loop when nums is [2, 3, 4]. What is the running total after each pass?',
+    rubric:[{label:'Names the starting value of the total',re:/zero|\b0\b|initial|start/i},{label:'Explains that odd items are skipped',re:/odd|skip|only add|not added|ignore/i},{label:'Reaches the correct total (6)',re:/\b6\b|six/i}],
+    strong:'The total starts at zero. For [2, 3, 4] it adds 2 so the total is 2, skips 3 because it is odd, then adds 4 so the total is 6.',weak:'It just loops through the list and adds things up.'},
+  retry:{q:'A different case: if nums is [5, 8, 10], describe step by step how your function arrives at its return value.',
+    rubric:[{label:'Names the starting value of the total',re:/zero|\b0\b|initial|start/i},{label:'Explains that 5 is skipped',re:/\b5\b.*(odd|skip|not|ignore)|odd|skip/i},{label:'Reaches the correct total (18)',re:/\b18\b|eighteen/i}],
+    strong:'The total starts at 0. 5 is odd so it is skipped. 8 is added, then 10 is added, and the function returns 18.',weak:'It goes through each number and returns the result.'}},
+ B:{name:'Modulo and conditions',
+  primary:{q:'Why does your condition use the % operator? What would change if it tested n % 2 == 1 instead?',
+    rubric:[{label:'Explains % as the remainder',re:/remainder|left over|leftover|mod/i},{label:'Links remainder 0 to even numbers',re:/even|divisible by 2|no remainder/i},{label:'Explains what testing == 1 would do',re:/odd|instead|opposite|flip/i}],
+    strong:'The % operator gives the remainder after dividing by 2. A remainder of 0 means the number is even. With == 1 it would add the odd numbers instead.',weak:'It checks the number somehow.'},
+  retry:{q:'How would you change the condition so the function sums only multiples of 3? Explain why that works.',
+    rubric:[{label:'Uses % 3',re:/%\s*3|mod(ulo)?\s*3/i},{label:'Explains multiples leave no remainder',re:/remainder|divisible|multiple/i},{label:'Tests the remainder against 0',re:/==\s*0|equals? (0|zero)|is (0|zero)/i}],
+    strong:'Use n % 3 == 0. A multiple of 3 leaves a remainder of zero when divided by 3, so == 0 keeps only those.',weak:'Change the number in the if statement.'}}
+};
+const MODEL='mock-llm 1.0 · prompt v3 · rubric r2';
+
+function makeState(){
+  const ASG1={id:'A1',title:'Functions Warm-up',due:'Closed',open:false,outcomes:['Write and call functions'],
+    checks:[{id:'a',label:'Defines the function',req:'Define the function',mandatory:true},{id:'b',label:'Returns the right value',req:'Return the correct value',mandatory:true},{id:'c',label:'Handles edge case',req:'Handle an empty input',mandatory:false}],
+    config:{threshold:2,release:'after_complete'}};
+  const ASG2={id:'A2',title:'Sum of Even Numbers',due:'Oct 16',open:true,
+    text:'Write a Python function sum_even(nums) that returns the sum of the even numbers in a list.',
+    outcomes:['Use loops to process a list','Apply conditions with the modulo operator'],
+    checks:[
+      {id:'c1',label:'Defines sum_even(nums)',req:'Define a function named sum_even that takes a list',mandatory:true,diag:"NameError: name 'sum_even' is not defined"},
+      {id:'c2',label:'Adds only even numbers',req:'Add only the even numbers to the total',mandatory:true,diag:'test_even_only: sum_even([1, 2, 3, 4]) expected 6, got 4'},
+      {id:'c3',label:'Returns a value',req:'Return the total to the caller',mandatory:true,diag:'test_returns: sum_even([2]) returned None'},
+      {id:'c4',label:'Visits every item',req:'Process every item in the list',mandatory:true,diag:'static_check: no loop or comprehension found'},
+      {id:'c5',label:'Handles an empty list',req:'Return 0 for an empty list',mandatory:false,diag:'test_empty: sum_even([]) expected 0'}],
+    config:{threshold:2,release:'after_complete'}};
+  const GOOD='def sum_even(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 0:\n            total += n\n    return total\n';
+  const BAD='def sum_even(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 1:\n            total += n\n    return total\n';
+  const users=[
+    {id:'u1',name:'Ava Morales',email:'ava@school.edu',role:'student',pseud:'stu_a91f',active:true},
+    {id:'u2',name:'Ben Okafor',email:'ben@school.edu',role:'student',pseud:'stu_b27c',active:true},
+    {id:'u3',name:'Chloe Park',email:'chloe@school.edu',role:'student',pseud:'stu_c55d',active:true},
+    {id:'u4',name:'Dev Patel',email:'dev@school.edu',role:'student',pseud:'stu_d08e',active:true},
+    {id:'i1',name:'Dr. Lena Rivera',email:'rivera@school.edu',role:'instructor',pseud:'',active:true},
+    {id:'a1',name:'Sam Whitfield',email:'admin@school.edu',role:'administrator',pseud:'',active:true}];
+  const ev=(asg,okIds,code)=>{const checks=asg.checks.map(c=>({id:c.id,ok:okIds.includes(c.id)}));return{checks,passed:checks.filter(c=>c.ok).length,total:checks.length,suite:'s1.2',diag:checks.filter(c=>!c.ok).map(c=>asg.checks.find(x=>x.id===c.id).diag||''),at:ago(0)}};
+  const turn=(c,kind,a,score,pts,m)=>({c,kind,q:BANK[c][kind].q,a,score,pts,at:ago(m)});
+  const threads=[];
+  // Ava: finished A1
+  threads.push({id:'T1',studentId:'u1',asg:'A1',status:'complete',hold:null,hints:0,released:true,requested:false,
+    versions:[{n:1,filename:'warmup.py',code:'def greet(name):\n    return "Hello, " + name\n',at:ago(9000),eval:ev(ASG1,['a','b','c']),decision:'PASS'}],
+    routing:[{at:ago(9000),t:'Evaluation complete: 3 of 3 checks. Decision PASS.'},{at:ago(8990),t:'Routed to Path A: Understanding Review.'},{at:ago(8980),t:'Understanding Review finished: sufficient evidence.'}],
+    session:{order:['A'],turns:[{c:'A',kind:'primary',q:'Explain what your function returns and why.',a:'It returns the greeting string so the caller can print it.',score:3,pts:[true,true,true],at:ago(8985),generic:true}],outcome:'sufficient',insufficient:[],model:MODEL},actions:[]});
+  // Ben: complete
+  threads.push({id:'T2',studentId:'u2',asg:'A2',status:'complete',hold:null,hints:0,released:true,requested:false,
+    versions:[{n:1,filename:'sum_even.py',code:GOOD,at:ago(300),eval:ev(ASG2,['c1','c2','c3','c4','c5']),decision:'PASS'}],
+    routing:[{at:ago(300),t:'Evaluation complete: 5 of 5 checks. Decision PASS.'},{at:ago(299),t:'Routed to Path A: Understanding Review.'},{at:ago(280),t:'Understanding Review finished: sufficient evidence.'}],
+    session:{order:['A','B'],turns:[turn('A','primary',BANK.A.primary.strong,3,[true,true,true],295),turn('B','primary','The % gives the remainder, and a remainder of 0 means even. With == 1 you would be adding the odd ones.',2,[true,true,false],285)],outcome:'sufficient',insufficient:[],model:MODEL},actions:[]});
+  // Chloe: correction
+  threads.push({id:'T3',studentId:'u3',asg:'A2',status:'correction',hold:null,hints:1,released:false,requested:false,
+    versions:[{n:1,filename:'sum_even.py',code:BAD,at:ago(90),eval:ev(ASG2,['c1','c3','c4','c5']),decision:'FAIL'}],
+    routing:[{at:ago(90),t:'Evaluation complete: 4 of 5 checks. Decision FAIL (1 mandatory check not met).'},{at:ago(89),t:'Routed to Path B: Guided Correction.'}],session:null,actions:[]});
+  // Dev: referred
+  threads.push({id:'T4',studentId:'u4',asg:'A2',status:'referred',hold:'Understanding evidence was not sufficient on "Loop control" after the retry.',hints:0,released:false,requested:false,
+    versions:[{n:1,filename:'sum_even.py',code:GOOD,at:ago(200),eval:ev(ASG2,['c1','c2','c3','c4','c5']),decision:'PASS'}],
+    routing:[{at:ago(200),t:'Evaluation complete: 5 of 5 checks. Decision PASS.'},{at:ago(199),t:'Routed to Path A: Understanding Review.'},{at:ago(170),t:'Referred to instructor: limits reached without sufficient evidence.'}],
+    session:{order:['A','B'],turns:[turn('A','primary',BANK.A.primary.weak,0,[false,false,false],195),turn('A','retry',BANK.A.retry.weak,0,[false,false,false],188),turn('B','primary',BANK.B.primary.strong,3,[true,true,true],180)],outcome:'referred',insufficient:['A'],model:MODEL},actions:[]});
+  return{users,asgs:[ASG1,ASG2],threads,services:{evaluator:true,ai:true,pathB:true},audit:[
+    {at:ago(300),who:'stu_b27c',what:'Submitted sum_even.py (version 1)'},{at:ago(200),who:'stu_d08e',what:'Submitted sum_even.py (version 1)'},{at:ago(90),who:'stu_c55d',what:'Submitted sum_even.py (version 1)'}],
+    backups:[{at:ago(1440),size:'4.2 MB'},{at:ago(2880),size:'4.1 MB'}],keyRotated:ago(20000),
+    samples:{GOOD,BAD}};
+}
+let S=makeState();
+let UI={user:null,view:'',rec:null,fname:'sum_even.py',code:'',err:null,ans:'',toast:'',email:'ava@school.edu',pw:'demo',loginErr:'',setupDraft:null};
+
+/* ---------- domain logic ---------- */
+const asgOf=id=>S.asgs.find(a=>a.id===id);
+const userOf=id=>S.users.find(u=>u.id===id);
+const log=(who,what)=>S.audit.unshift({at:new Date(),who,what});
+const A2=()=>asgOf('A2');
+function evaluate(code){
+  const asg=A2();
+  const checks=asg.checks.map(c=>({id:c.id,ok:!!TESTS[c.id](code)}));
+  return{checks,passed:checks.filter(c=>c.ok).length,total:checks.length,suite:'s1.2',diag:checks.filter(c=>!c.ok).map(c=>asg.checks.find(x=>x.id===c.id).diag),at:new Date()};
+}
+function route(ev,asg){
+  if(!ev) return{d:'MANUAL REVIEW',why:'No evaluation evidence'};
+  const unmet=ev.checks.filter(c=>!c.ok&&asg.checks.find(x=>x.id===c.id).mandatory);
+  return unmet.length?{d:'FAIL',why:unmet.length+' mandatory check'+(unmet.length>1?'s':'')+' not met'}:{d:'PASS',why:'All mandatory checks met'};
+}
+function addRoute(th,t){th.routing.push({at:new Date(),t});}
+function validateUpload(name,code){
+  if(!/\.py$/i.test(name.trim())) return 'This file type is not accepted. Upload a Python file that ends in .py.';
+  if(code.length>20000) return 'The file is larger than 20 KB. Upload a smaller file.';
+  if(code.trim().length<10) return 'The file is empty or too short to evaluate. Upload your completed work.';
+  if(/\bimport\s+(os|subprocess|socket)\b/.test(code)) return 'The file imports a module that is not allowed for this assignment. Remove it and upload again.';
+  return null;
+}
+function threadFor(uid,aid){return S.threads.find(t=>t.studentId===uid&&t.asg===aid);}
+function lastV(th){return th.versions[th.versions.length-1];}
+function doSubmit(){
+  const u=UI.user,asg=A2();
+  const err=validateUpload(UI.fname,UI.code);
+  if(err){UI.err=err;log(u.pseud,'Upload rejected: '+UI.fname);render();return;}
+  UI.err=null;
+  let th=threadFor(u.id,'A2');
+  if(!th){th={id:'T'+(S.threads.length+1),studentId:u.id,asg:'A2',status:'manual',hold:null,hints:0,released:false,requested:false,versions:[],routing:[],session:null,actions:[]};S.threads.push(th);}
+  const prevStatus=th.status;
+  const v={n:th.versions.length+1,filename:UI.fname.trim(),code:UI.code,at:new Date(),eval:null,decision:null};
+  th.versions.push(v);
+  log(u.pseud,'Submitted '+v.filename+' (version '+v.n+')');
+  if(!S.services.evaluator){
+    th.status='manual';th.hold='The evaluator was unavailable. Your submission is saved and has not been marked incorrect.';
+    addRoute(th,'Evaluation unavailable. Record preserved. Status: MANUAL REVIEW.');
+    UI.view='session';toast('Submission saved. Evaluation is unavailable right now.');render();return;
+  }
+  v.eval=evaluate(v.code);
+  applyRouting(th,v,prevStatus==='correction');
+  UI.view=th.status==='correction'?'session':(th.status==='review'?'session':'results');
+  render();
+}
+function applyRouting(th,v,wasRevision){
+  const asg=A2(),r=route(v.eval,asg);
+  v.decision=r.d;
+  addRoute(th,'Evaluation complete: '+v.eval.passed+' of '+v.eval.total+' checks. Decision '+r.d+' ('+r.why+').');
+  if(r.d==='PASS'){
+    if(!S.services.ai){th.status='manual';th.hold='The AI service was unavailable, so the Understanding Review could not start. Nothing was marked incorrect.';addRoute(th,'Path A could not start (AI service unavailable). Status: MANUAL REVIEW.');return;}
+    addRoute(th,wasRevision?'Revised submission passed. Proceeding to Path A: Understanding Review.':'Routed to Path A: Understanding Review.');
+    startSession(th);
+  }else{
+    th.status='correction';th.hold=null;
+    addRoute(th,'Routed to Path B: Guided Correction.');
+  }
+}
+function startSession(th){
+  th.status='review';th.hold=null;
+  th.session={order:['A','B'],turns:[],outcome:null,insufficient:[],model:MODEL,startedAt:new Date()};
+  nextTurn(th,'A','primary');
+}
+function nextTurn(th,c,kind){th.session.turns.push({c,kind,q:BANK[c][kind].q,a:null,score:null,pts:null,at:new Date()});}
+function curTurn(th){const s=th.session;if(!s)return null;const t=s.turns[s.turns.length-1];return t&&t.a===null?t:null;}
+function pendingScore(th){const s=th.session;if(!s)return null;const t=s.turns[s.turns.length-1];return t&&t.a!==null&&t.score===null?t:null;}
+function submitAnswer(){
+  const th=threadFor(UI.user.id,'A2'),t=curTurn(th),text=UI.ans.trim();
+  if(!t)return; if(text.length<5){toast('Write a short answer first.');return;}
+  t.a=text;UI.ans='';
+  log(UI.user.pseud,'Answered '+BANK[t.c].name+' ('+t.kind+')');
+  scoreTurn(th,t);render();
+}
+function scoreTurn(th,t){
+  if(!S.services.ai){th.status='manual';th.hold='AI scoring is unavailable. Your answer is saved and has not been scored as incorrect.';addRoute(th,'Scoring unavailable. Answer preserved. Status: MANUAL REVIEW.');return;}
+  const R=BANK[t.c][t.kind].rubric;
+  t.pts=R.map(r=>r.re.test(t.a));t.score=t.pts.filter(Boolean).length;t.scoredAt=new Date();
+  th.status='review';th.hold=null;
+  const thr=A2().config.threshold,s=th.session;
+  if(t.score>=thr){advance(th,t);}
+  else if(t.kind==='primary'){nextTurn(th,t.c,'retry');}
+  else{s.insufficient.push(t.c);advance(th,t);}
+}
+function advance(th,t){
+  const s=th.session,i=s.order.indexOf(t.c);
+  if(i<s.order.length-1){nextTurn(th,s.order[i+1],'primary');return;}
+  if(s.insufficient.length){
+    s.outcome='referred';th.status='referred';th.hold='Understanding evidence was not sufficient on "'+s.insufficient.map(c=>BANK[c].name).join('", "')+'" after the retry.';
+    addRoute(th,'Referred to instructor: limits reached without sufficient evidence.');
+  }else{
+    s.outcome='sufficient';th.status='complete';th.hold=null;
+    addRoute(th,'Understanding Review finished: sufficient evidence.');
+  }
+}
+function retryHold(id){
+  const th=S.threads.find(t=>t.id===id),v=lastV(th);
+  if(th.session&&pendingScore(th)){if(!S.services.ai){toast('AI service is still unavailable.');return;}scoreTurn(th,pendingScore(th));log('system','Retried scoring for '+th.id);render();return;}
+  if(!v.eval){if(!S.services.evaluator){toast('Evaluator is still unavailable.');return;}v.eval=evaluate(v.code);applyRouting(th,v,false);log('system','Retried evaluation for '+th.id);render();return;}
+  if(v.decision==='PASS'&&!th.session){if(!S.services.ai){toast('AI service is still unavailable.');return;}addRoute(th,'Retry succeeded. Routed to Path A: Understanding Review.');startSession(th);log('system','Started review for '+th.id);render();return;}
+  toast('Nothing to retry.');
+}
+function nextHint(){
+  const th=threadFor(UI.user.id,'A2');if(th.hints>=3)return;
+  th.hints++;log(UI.user.pseud,'Requested hint level '+th.hints);render();
+}
+function firstUnmet(th){const v=lastV(th);if(!v.eval)return null;const asg=A2();const c=v.eval.checks.find(c=>!c.ok&&asg.checks.find(x=>x.id===c.id).mandatory);return c?c.id:null;}
+function points(th){const s=th.session;if(!s)return{got:0,max:0};let got=0,max=0;s.turns.forEach(t=>{if(t.score!=null){got+=t.score;max+=3;}});return{got,max};}
+function pathLabel(th){return th.status==='correction'?'Guided Correction':(th.status==='manual'?'Pending':'Understanding Review');}
+function checksPill(th){
+  const v=lastV(th);
+  if(th.actions.some(a=>a.type==='checks'))return pill('ok','passed (instructor)');
+  if(!v.eval)return pill('warn','not completed');
+  return v.decision==='PASS'?pill('ok','passed'):pill('bad','not yet passed');
+}
+function underPill(th){
+  const o=th.actions.some(a=>a.type==='sufficient')?' (instructor)':'';
+  return({correction:pill('mute','not started'),review:pill('info','in progress'),complete:pill('ok','sufficient evidence'+o),referred:pill('warn','with instructor'),manual:pill('warn','on hold')})[th.status];
+}
+function feedbackVisible(th,t){
+  const r=asgOf(th.asg).config.release;
+  if(r==='immediate')return t.score!=null;
+  if(r==='after_complete')return !!th.session.outcome;
+  return !!th.released;
+}
+function toast(m){UI.toast=m;setTimeout(()=>{if(UI.toast===m){UI.toast='';render();}},2800);}
+
+/* ---------- navigation and auth ---------- */
+const NAV={
+  student:[['home','My Assignments'],['submit','Submit or Revise'],['session','Current Session'],['results','Results and Feedback'],['history','History and Progress']],
+  instructor:[['overview','Overview'],['records','Records'],['setup','Assignment Setup'],['reports','Reports']],
+  administrator:[['accounts','Accounts'],['services','Services and Credentials'],['audit','Audit Log'],['backups','Backups and Retention']]
+};
+function go(v){
+  UI.view=v;UI.err=null;
+  if(v==='submit'&&UI.user.role==='student'){
+    const th=threadFor(UI.user.id,'A2');
+    if(th&&th.versions.length&&(th.status==='correction')){const l=lastV(th);UI.fname=l.filename;UI.code=l.code;}
+    else if(!th||!th.versions.length){UI.fname='sum_even.py';UI.code='';}
+  }
+  if(v!=='records')UI.rec=null;
+  render();
+}
+function login(){
+  const u=S.users.find(x=>x.email.toLowerCase()===UI.email.trim().toLowerCase());
+  if(!u||UI.pw!=='demo'){UI.loginErr='Email or password is not correct. In this prototype the password is "demo".';render();return;}
+  if(!u.active){UI.loginErr='This account is disabled. Ask an administrator to restore access.';render();return;}
+  UI.user=u;UI.loginErr='';UI.view=NAV[u.role][0][0];UI.rec=null;log(u.pseud||u.email,'Signed in as '+u.role);render();
+}
+function quick(email){UI.email=email;UI.pw='demo';login();}
+function logout(){UI.user=null;UI.view='';render();}
+function resetDemo(){S=makeState();UI.user=null;UI.view='';UI.code='';UI.fname='sum_even.py';UI.err=null;UI.ans='';UI.rec=null;UI.setupDraft=null;render();toast('Demo data reset.');}
+
+/* ---------- student views ---------- */
+function vHome(){
+  const u=UI.user,th=threadFor(u.id,'A2'),a1=threadFor(u.id,'A1');
+  let cta='<button class="btn" onclick="go(\'submit\')">Upload work</button>',next='Upload your solution to start. The system checks it first, then tells you which step comes next.',status='';
+  if(th){
+    status='<div class="row" style="margin:8px 0">Assignment checks '+checksPill(th)+' Understanding review '+underPill(th)+'</div>';
+    if(th.status==='correction'){cta='<button class="btn" onclick="go(\'session\')">Open Guided Correction</button>';next='Some requirements are not met yet. Guided Correction gives hints so you can revise and resubmit.';}
+    else if(th.status==='review'){cta='<button class="btn" onclick="go(\'session\')">Continue Understanding Review</button>';next='Your work meets the requirements. Understanding Review asks a few questions about how your solution works.';}
+    else if(th.status==='manual'){cta='<button class="btn" onclick="go(\'session\')">See status</button>';next=th.hold;}
+    else if(th.status==='referred'){cta='<button class="btn sec" onclick="go(\'results\')">View results</button>';next='Your responses were sent to your instructor, who will review them.';}
+    else {cta='<button class="btn sec" onclick="go(\'results\')">View results</button>';next='This assignment is complete.';}
+  }
+  return '<div class="head"><div><h1>My Assignments</h1><p class="muted">Welcome back, '+esc(u.name.split(' ')[0])+'.</p></div></div>'+
+  '<div class="card"><div class="row" style="justify-content:space-between"><h3>'+esc(A2().title)+'</h3><span class="muted">Due '+esc(A2().due)+'</span></div>'+
+  '<p>'+esc(A2().text)+'</p>'+status+'<div class="note">'+esc(next)+'</div>'+cta+'</div>'+
+  '<div class="card"><div class="row" style="justify-content:space-between"><h3>Functions Warm-up</h3><span class="muted">Closed</span></div>'+
+  (a1?'<div class="row" style="margin:6px 0">Assignment checks '+checksPill(a1)+' Understanding review '+underPill(a1)+'</div>':'')+'</div>';
+}
+function reqList(th){
+  const asg=A2(),v=th&&lastV(th);
+  return '<ul style="margin:6px 0;padding-left:18px">'+asg.checks.map(c=>{
+    const r=v&&v.eval?v.eval.checks.find(x=>x.id===c.id):null;
+    return '<li>'+esc(c.req)+(c.mandatory?'':' <span class="muted">(optional)</span>')+(r?' '+(r.ok?pill('ok','met'):pill(c.mandatory?'bad':'warn','not met')):'')+'</li>';}).join('')+'</ul>';
+}
+function vSubmit(){
+  const th=threadFor(UI.user.id,'A2');
+  const locked=th&&(th.status==='review'||th.status==='complete'||th.status==='referred');
+  let h='<div class="head"><div><h1>Submit or Revise</h1><p class="muted">'+esc(A2().title)+'</p></div></div>';
+  h+='<div class="card"><h3>Requirements</h3>'+reqList(th)+'</div>';
+  if(th&&th.status==='manual'&&!lastV(th).eval&&!th.session)h+='<div class="note warn">'+esc(th.hold)+' <button class="btn sm" style="margin-left:8px" onclick="retryHold(\''+th.id+'\')">Retry evaluation</button></div>';
+  if(locked){h+='<div class="note">'+(th.status==='review'?'You have a review in progress. Finish it in Current Session.':'This assignment is closed for new submissions. See Results and Feedback.')+'</div>';return h;}
+  if(th&&th.status==='correction')h+='<div class="note">This is a revision of version '+lastV(th).n+'. Your earlier versions are kept.</div>';
+  h+='<div class="card"><h3>Your file</h3>';
+  if(UI.err)h+='<div class="note bad" role="alert">'+esc(UI.err)+' <span class="muted">This upload was not evaluated and does not count as an attempt.</span></div>';
+  h+='<label for="fname">File name</label><input id="fname" value="'+esc(UI.fname)+'" oninput="UI.fname=this.value" size="28">';
+  h+='<label for="file">Choose a file from your computer</label><input id="file" type="file" onchange="loadFile(this)">';
+  h+='<label for="code">File contents</label><textarea id="code" rows="11" spellcheck="false" oninput="UI.code=this.value" placeholder="Paste your code here, or load a sample below.">'+esc(UI.code)+'</textarea>';
+  h+='<div class="row" style="margin:8px 0"><span class="muted">Demo samples:</span><button class="btn sec sm" onclick="sample(\'good\')">Correct solution</button><button class="btn sec sm" onclick="sample(\'bad\')">Solution with a bug</button><button class="btn sec sm" onclick="sample(\'exe\')">Wrong file type</button><button class="btn sec sm" onclick="sample(\'os\')">Disallowed import</button></div>';
+  h+='<button class="btn" onclick="doSubmit()">Submit for evaluation</button></div>';
+  return h;
+}
+function loadFile(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{UI.fname=f.name;UI.code=String(r.result||'');render();};r.readAsText(f);}
+function sample(k){
+  if(k==='good'){UI.fname='sum_even.py';UI.code=S.samples.GOOD;}
+  if(k==='bad'){UI.fname='sum_even.py';UI.code=S.samples.BAD;}
+  if(k==='exe'){UI.fname='sum_even.exe';UI.code='MZ binary content placeholder';}
+  if(k==='os'){UI.fname='sum_even.py';UI.code='import os\n'+S.samples.GOOD;}
+  UI.err=null;render();
+}
+function vSession(){
+  const th=threadFor(UI.user.id,'A2');
+  let h='<div class="head"><div><h1>Current Session</h1></div></div>';
+  if(!th||!th.versions.length)return h+'<div class="card"><p>No session yet. Submit your work to begin.</p><button class="btn" onclick="go(\'submit\')">Upload work</button></div>';
+  if(th.status==='manual'){
+    return h+'<div class="card"><h3>On hold</h3><div class="note warn">'+esc(th.hold)+'</div><p class="muted">Your record is saved. An instructor can also review it.</p><button class="btn" onclick="retryHold(\''+th.id+'\')">Retry now</button></div>';
+  }
+  if(th.status==='correction'){
+    const u=firstUnmet(th),hints=u?HINTS[u]:[];
+    h+='<div class="card"><div class="row" style="justify-content:space-between"><h3>Guided Correction</h3>'+pill('info','Path B')+'</div>'+
+    '<p>Some requirements in version '+lastV(th).n+' are not met yet. This is a normal part of the process. Review the list, use hints if you want them, then revise and resubmit.</p>'+reqList(th)+'</div>';
+    h+='<div class="card"><h3>Hints</h3><p class="muted">Hints get more specific each time. You can use up to 3 for this requirement. <span class="mono">(Team 2 module, simulated here)</span></p>';
+    if(!S.services.pathB)h+='<div class="note warn">Hints are temporarily unavailable. You can still revise and resubmit.</div>';
+    else{
+      if(!th.hints)h+='<p>No hints used yet.</p>';
+      for(let i=0;i<th.hints;i++)h+='<div class="note"><b>Hint '+(i+1)+':</b> '+esc(hints[i])+'</div>';
+      h+='<button class="btn sec" '+(th.hints>=3?'disabled':'')+' onclick="nextHint()">'+(th.hints>=3?'No more hints':'Get hint '+(th.hints+1))+'</button>';
+    }
+    h+='</div><button class="btn" onclick="go(\'submit\')">Revise and resubmit</button>';
+    return h;
+  }
+  if(th.status==='review'){
+    const s=th.session,t=curTurn(th),answered=s.turns.filter(x=>x.a!==null).length;
+    h+='<div class="card"><div class="row" style="justify-content:space-between"><h3>Understanding Review</h3>'+pill('info','Path A')+'</div>'+
+    '<p class="muted">Your code meets the requirements. These questions look at how your solution works. They do not affect your assignment checks, and no score here is a course grade.</p>'+
+    '<div class="muted">Question '+(answered+1)+' · at most 4 questions · '+(S.services.ai?'':'AI service unavailable')+'</div></div>';
+    if(t){
+      h+='<div class="card"><div class="muted">'+esc(BANK[t.c].name)+(t.kind==='retry'?' · a different question on the same idea':'')+'</div><div class="q">'+esc(t.q)+'</div>'+
+      '<label for="ans">Your answer</label><textarea id="ans" rows="5" style="font-family:var(--font-body)" oninput="UI.ans=this.value">'+esc(UI.ans)+'</textarea>'+
+      '<div class="row" style="margin-top:8px"><button class="btn" onclick="submitAnswer()">Submit answer</button><span class="muted">Demo helpers:</span><button class="btn sec sm" onclick="fillAns(\'strong\')">Insert strong answer</button><button class="btn sec sm" onclick="fillAns(\'weak\')">Insert weak answer</button></div></div>';
+    }
+    const done=s.turns.filter(x=>x.score!==null);
+    if(done.length){h+='<div class="card"><h3>Answered so far</h3>'+done.map(x=>
+      '<div class="turn"><div class="muted">'+esc(BANK[x.c].name)+' · '+(x.kind==='retry'?'retry':'first question')+'</div><div>'+esc(x.q)+'</div><div class="row" style="margin-top:4px"><b class="mono">'+x.score+' / 3</b>'+(x.score>=A2().config.threshold?pill('ok','sufficient'):pill('warn','not yet sufficient'))+'</div>'+
+      (x.score<A2().config.threshold&&x.kind==='primary'?'<div class="muted">A different question on the same idea follows. The expected answer is shown only after the review.</div>':'')+'</div>').join('')+'</div>';}
+    return h;
+  }
+  h+='<div class="card"><p>No active session. '+(th.status==='referred'?'Your responses are with your instructor.':'This assignment is complete.')+'</p><button class="btn sec" onclick="go(\'results\')">View results</button></div>';
+  return h;
+}
+function fillAns(k){const th=threadFor(UI.user.id,'A2'),t=curTurn(th);UI.ans=BANK[t.c][t.kind][k];render();}
+function vResults(){
+  const th=threadFor(UI.user.id,'A2');
+  let h='<div class="head"><div><h1>Results and Feedback</h1><p class="muted">'+esc(A2().title)+'</p></div></div>';
+  if(!th||!th.versions.length)return h+'<div class="card"><p>Nothing to show yet.</p></div>';
+  h+='<div class="grid"><div class="card"><div class="muted">Assignment checks</div><div style="margin:6px 0">'+checksPill(th)+'</div><div class="muted">Version '+lastV(th).n+'</div></div>'+
+     '<div class="card"><div class="muted">Understanding review</div><div style="margin:6px 0">'+underPill(th)+'</div><div class="muted">'+(th.session&&points(th).max?points(th).got+' of '+points(th).max+' points so far':'No questions answered')+'</div></div></div>';
+  h+='<div class="note">These results are evidence for your instructor. They are not an official course grade or a penalty.</div>';
+  h+='<div class="card"><h3>Requirements</h3>'+reqList(th)+'</div>';
+  if(th.session&&th.session.turns.some(t=>t.score!=null)){
+    h+='<div class="card"><h3>Understanding review by question</h3><div class="scroll"><table><thead><tr><th>Idea</th><th>Question</th><th>Score</th><th>Feedback</th></tr></thead><tbody>'+
+    th.session.turns.filter(t=>t.score!=null).map(t=>{
+      let fb='<span class="muted">Released by your instructor'+(asgOf(th.asg).config.release==='after_complete'?' after the review ends':'')+'.</span>';
+      if(feedbackVisible(th,t)){
+        if(t.generic)fb='Covered the main idea.';
+        else{const R=BANK[t.c][t.kind].rubric;fb=R.map((r,i)=>(t.pts[i]?'<div>'+pill('ok','covered')+' '+esc(r.label)+'</div>':'<div>'+pill('warn','missing')+' '+esc(r.label)+'</div>')).join('');}
+      }
+      return '<tr><td>'+esc(BANK[t.c].name)+'</td><td>'+(t.kind==='retry'?'Retry':'First')+'</td><td class="mono">'+t.score+' / 3</td><td>'+fb+'</td></tr>';}).join('')+'</tbody></table></div>'+
+    (th.session.outcome?'<p style="margin-top:10px"><b>Summary:</b> '+points(th).got+' of '+points(th).max+' points. '+(th.session.outcome==='sufficient'?'The responses showed sufficient understanding.':'Your instructor will review these responses.')+'</p>':'')+'</div>';
+  }
+  h+='<div class="row">'+(th.requested?pill('info','Instructor review requested'):'<button class="btn sec" onclick="requestReview()">Request instructor review</button>')+'</div>';
+  return h;
+}
+function requestReview(){const th=threadFor(UI.user.id,'A2');th.requested=true;log(UI.user.pseud,'Requested instructor review');toast('Your instructor has been notified.');render();}
+function vHistory(){
+  const th=threadFor(UI.user.id,'A2'),a1=threadFor(UI.user.id,'A1');
+  let h='<div class="head"><div><h1>History and Progress</h1></div></div>';
+  const done=[a1,th].filter(x=>x&&(x.status==='complete')).length;
+  h+='<div class="card"><h3>Progress</h3><div class="row" style="justify-content:space-between"><span>Assignments complete</span><b>'+done+' of 2</b></div><div class="bar"><span style="width:'+(done*50)+'%"></span></div></div>';
+  h+='<div class="card"><h3>Submissions</h3>';
+  const rows=[];[a1,th].forEach(x=>{if(x)x.versions.forEach(v=>rows.push({a:asgOf(x.asg).title,v}));});
+  if(!rows.length)h+='<p class="muted">No submissions yet.</p>';
+  else h+='<div class="scroll"><table><thead><tr><th>Assignment</th><th>Version</th><th>File</th><th>Submitted</th><th>Checks</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.a)+'</td><td>'+r.v.n+'</td><td class="mono">'+esc(r.v.filename)+'</td><td>'+fmt(r.v.at)+'</td><td>'+(r.v.eval?r.v.eval.passed+' of '+r.v.eval.total:'pending')+'</td></tr>').join('')+'</tbody></table></div>';
+  h+='</div>';
+  if(th){h+='<div class="card"><h3>Activity</h3><ul class="tl">'+th.routing.map(r=>'<li><div>'+esc(r.t.replace(/\s*\(\d+ mandatory.*?\)/,''))+'</div><div class="t">'+fmt(r.at)+'</div></li>').join('')+'</ul></div>';}
+  return h;
+}
+
+/* ---------- instructor views ---------- */
+const stuName=th=>userOf(th.studentId).name;
+function needsAttention(th){return th.status==='manual'||th.status==='referred'||th.requested;}
+function vOverview(){
+  const A=S.threads.filter(t=>t.asg==='A2');
+  const c=k=>A.filter(t=>t.status===k).length;
+  const attn=A.filter(needsAttention);
+  let h='<div class="head"><div><h1>Overview</h1><p class="muted">'+esc(A2().title)+' · due '+esc(A2().due)+'</p></div></div>';
+  h+='<div class="grid"><div class="card"><div class="muted">Needs your attention</div><div class="stat">'+attn.length+'</div></div><div class="card"><div class="muted">In Understanding Review</div><div class="stat">'+c('review')+'</div></div><div class="card"><div class="muted">In Guided Correction</div><div class="stat">'+c('correction')+'</div></div><div class="card"><div class="muted">Complete</div><div class="stat">'+c('complete')+'</div></div></div>';
+  h+='<div class="card"><h3>Needs attention</h3>';
+  if(!attn.length)h+='<p class="muted">Nothing needs review right now.</p>';
+  else h+='<div class="scroll"><table><thead><tr><th>Student</th><th>Reason</th><th></th></tr></thead><tbody>'+attn.map(t=>'<tr class="click" onclick="openRec(\''+t.id+'\')"><td>'+esc(stuName(t))+'</td><td>'+esc(t.requested&&t.status!=='referred'&&t.status!=='manual'?'Student requested review':(t.hold||'Review requested'))+'</td><td>'+pill('warn','Open')+'</td></tr>').join('')+'</tbody></table></div>';
+  h+='</div><div class="card"><h3>Roster</h3>'+rosterTable()+'</div>';
+  return h;
+}
+function rosterTable(){
+  const asg=A2(),done=S.threads.filter(t=>t.asg==='A2');
+  const rows=S.users.filter(u=>u.role==='student').map(u=>{
+    const t=done.find(x=>x.studentId===u.id);
+    return t?'<tr class="click" onclick="openRec(\''+t.id+'\')"><td>'+esc(u.name)+'</td><td>'+checksPill(t)+'</td><td>'+underPill(t)+'</td><td class="mono">'+(t.session&&points(t).max?points(t).got+'/'+points(t).max:'')+'</td></tr>'
+      :'<tr><td>'+esc(u.name)+'</td><td>'+pill('mute','no submission')+'</td><td></td><td></td></tr>';}).join('');
+  return '<div class="scroll"><table><thead><tr><th>Student</th><th>Assignment checks</th><th>Understanding review</th><th>Points</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function openRec(id){UI.view='records';UI.rec=id;render();}
+function vRecords(){
+  if(UI.rec)return vRecDetail(S.threads.find(t=>t.id===UI.rec));
+  let h='<div class="head"><div><h1>Records</h1><p class="muted">Select a row for the full record.</p></div></div>';
+  h+='<div class="card"><div class="scroll"><table><thead><tr><th>Student</th><th>Assignment</th><th>Versions</th><th>Checks</th><th>Understanding</th><th>Flags</th></tr></thead><tbody>'+
+  S.threads.map(t=>'<tr class="click" onclick="openRec(\''+t.id+'\')"><td>'+esc(stuName(t))+'<div class="mono muted">'+esc(userOf(t.studentId).pseud)+'</div></td><td>'+esc(asgOf(t.asg).title)+'</td><td>'+t.versions.length+'</td><td>'+checksPill(t)+'</td><td>'+underPill(t)+'</td><td>'+(needsAttention(t)?pill('warn','attention'):'')+(t.actions.length?' '+pill('info',t.actions.length+' action'+(t.actions.length>1?'s':'')):'')+'</td></tr>').join('')+'</tbody></table></div></div>';
+  return h;
+}
+function vRecDetail(th){
+  const asg=asgOf(th.asg),u=userOf(th.studentId),pts=points(th);
+  let h='<div class="head"><div><button class="btn sec sm" onclick="openRec(null)">Back to records</button><h1 style="margin-top:8px">'+esc(u.name)+'</h1><p class="muted"><span class="mono">'+esc(u.pseud)+'</span> · '+esc(asg.title)+' · assignment version 2</p></div><div class="row">'+checksPill(th)+underPill(th)+'</div></div>';
+  if(th.hold)h+='<div class="note warn">'+esc(th.hold)+'</div>';
+  if(th.requested)h+='<div class="note">The student requested instructor review.</div>';
+  // versions
+  h+='<div class="card"><h3>Submission versions and evaluation</h3>';
+  th.versions.forEach(v=>{
+    h+='<div class="turn" style="border-top:0;margin-top:0"><div class="row"><b>Version '+v.n+'</b><span class="mono muted">'+esc(v.filename)+' · '+fmt(v.at)+'</span>'+(v.decision?pill(v.decision==='PASS'?'ok':'bad',v.decision):pill('warn','no evaluation'))+'</div><pre>'+esc(v.code)+'</pre>';
+    if(v.eval){
+      h+='<div class="scroll"><table><thead><tr><th>Check</th><th>Mandatory</th><th>Result</th><th>Sanitized diagnostic</th></tr></thead><tbody>'+
+      v.eval.checks.map(c=>{const d=asg.checks.find(x=>x.id===c.id);return '<tr><td>'+esc(d.label)+'</td><td>'+(d.mandatory?'yes':'no')+'</td><td>'+(c.ok?pill('ok','pass'):pill('bad','fail'))+'</td><td class="mono">'+(c.ok?'':esc(d.diag||''))+'</td></tr>';}).join('')+'</tbody></table></div><div class="muted mono">'+v.eval.passed+'/'+v.eval.total+' checks · test suite '+esc(v.eval.suite)+'</div>';
+    }else h+='<div class="muted">Evaluation did not complete. Record preserved.</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  // routing
+  h+='<div class="card"><h3>Routing history</h3><ul class="tl">'+th.routing.map(r=>'<li><div>'+esc(r.t)+'</div><div class="t">'+fmt(r.at)+'</div></li>').join('')+'</ul></div>';
+  // session
+  if(th.session){
+    h+='<div class="card"><h3>Understanding Review record</h3><dl class="kv"><dt>Outcome</dt><dd>'+(th.session.outcome?esc(th.session.outcome):'in progress')+'</dd><dt>Points</dt><dd class="mono">'+pts.got+' of '+pts.max+'</dd><dt>Model and prompt</dt><dd class="mono">'+esc(th.session.model)+'</dd><dt>Sufficiency threshold</dt><dd>'+asg.config.threshold+' of 3 per question</dd></dl>';
+    th.session.turns.forEach(t=>{
+      h+='<div class="turn"><div class="muted">'+(t.generic?'Understanding':esc(BANK[t.c].name))+' · '+(t.kind==='retry'?'Retry (different question)':'First question')+' · asked '+fmt(t.at)+'</div><div class="q" style="font-size:.95rem">'+esc(t.q)+'</div>'+
+      (t.a!==null?'<div><span class="muted">Response:</span> '+esc(t.a)+'</div>':'<div class="muted">Awaiting response.</div>');
+      if(t.score!=null){
+        h+='<div class="row" style="margin-top:4px"><b class="mono">'+t.score+' / 3</b>'+(t.score>=asg.config.threshold?pill('ok','sufficient'):pill('warn','insufficient'))+'</div>';
+        if(!t.generic)h+='<div>'+BANK[t.c][t.kind].rubric.map((r,i)=>'<div>'+(t.pts[i]?pill('ok','covered'):pill('warn','missing'))+' '+esc(r.label)+'</div>').join('')+'</div>';
+      }
+      h+='</div>';
+    });
+    h+='<div class="note" style="margin-top:12px">Questions are scored against a rubric. This record is evidence of understanding, not an AI-authorship finding.</div></div>';
+  }
+  // actions
+  h+='<div class="card"><h3>Instructor actions</h3>';
+  if(!th.actions.length)h+='<p class="muted">No comments or overrides yet.</p>';
+  th.actions.forEach(a=>{h+='<div class="turn"><div class="row">'+pill(a.type==='comment'?'mute':'info',a.label)+'<span class="muted">'+fmt(a.at)+' · '+esc(a.by)+'</span></div><div>'+esc(a.text)+'</div>'+(a.original?'<div class="muted">Original result kept: '+esc(a.original)+'</div>':'')+'</div>';});
+  h+='<label for="atext">Comment or reason</label><textarea id="atext" rows="3" style="font-family:var(--font-body)" placeholder="Required for any override."></textarea>';
+  h+='<div class="row" style="margin-top:8px"><button class="btn sec sm" onclick="instrAction(\''+th.id+'\',\'comment\')">Add comment</button>';
+  if(th.status==='referred'||th.status==='review')h+='<button class="btn sm" onclick="instrAction(\''+th.id+'\',\'sufficient\')">Override: accept understanding evidence</button>';
+  if(th.status==='correction'||th.status==='manual')h+='<button class="btn sm" onclick="instrAction(\''+th.id+'\',\'checks\')">Override: pass checks and start review</button>';
+  if(th.status==='manual')h+='<button class="btn sec sm" onclick="retryHold(\''+th.id+'\')">Retry automatic step</button>';
+  if(th.session&&!th.released)h+='<button class="btn sec sm" onclick="releaseFb(\''+th.id+'\')">Release feedback to student</button>';
+  h+='</div></div>';
+  return h;
+}
+function instrAction(id,type){
+  const th=S.threads.find(t=>t.id===id),text=(document.getElementById('atext').value||'').trim();
+  if(!text){toast('Add a comment or reason first.');return;}
+  const orig=checksPlain(th)+'; understanding '+underPlain(th);
+  const rec={at:new Date(),by:UI.user.name,type,text};
+  if(type==='comment'){rec.label='Comment';}
+  if(type==='sufficient'){rec.label='Override: understanding evidence accepted';rec.original=orig;th.status='complete';th.hold=null;if(th.session&&!th.session.outcome)th.session.outcome='sufficient';addRoute(th,'Instructor override: understanding evidence accepted.');}
+  if(type==='checks'){
+    if(!S.services.ai){toast('AI service is unavailable, so the review cannot start yet.');return;}
+    rec.label='Override: checks passed manually';rec.original=orig;addRoute(th,'Instructor override: checks passed manually. Routed to Path A.');startSession(th);
+  }
+  th.actions.push(rec);log(UI.user.name,'Instructor action on '+th.id+': '+rec.label);render();
+}
+const checksPlain=th=>{const v=lastV(th);return v.eval?'checks '+v.decision+' ('+v.eval.passed+'/'+v.eval.total+')':'checks not completed';};
+const underPlain=th=>th.status==='referred'?'referred ('+points(th).got+'/'+points(th).max+' points)':th.status;
+function releaseFb(id){const th=S.threads.find(t=>t.id===id);th.released=true;log(UI.user.name,'Released feedback for '+th.id);toast('Feedback released.');render();}
+function vSetup(){
+  const asg=A2();const d=UI.setupDraft||(UI.setupDraft={m:Object.fromEntries(asg.checks.map(c=>[c.id,c.mandatory])),threshold:asg.config.threshold,release:asg.config.release});
+  let h='<div class="head"><div><h1>Assignment Setup</h1><p class="muted">'+esc(asg.title)+'</p></div></div>';
+  h+='<div class="card"><h3>Assignment</h3><p>'+esc(asg.text)+'</p><div class="muted">Learning outcomes: '+asg.outcomes.map(esc).join('; ')+'</div></div>';
+  h+='<div class="card"><h3>Routing rule: mandatory checks</h3><p class="muted">The student enters Understanding Review only when every mandatory check passes.</p>'+
+   asg.checks.map(c=>'<label style="display:flex;gap:8px;font-weight:500;margin:6px 0"><input type="checkbox" '+(d.m[c.id]?'checked':'')+' onchange="UI.setupDraft.m[\''+c.id+'\']=this.checked"> '+esc(c.label)+'</label>').join('')+'</div>';
+  h+='<div class="card"><h3>Understanding Review limits</h3><dl class="kv"><dt>Questions per idea</dt><dd>1 first question + 1 different retry</dd><dt>Ideas covered</dt><dd>Loop control, Modulo and conditions</dd><dt>Maximum questions</dt><dd>4</dd><dt>When limits are reached</dt><dd>Refer to instructor</dd></dl>'+
+   '<label for="thr">Score needed per question (out of 3)</label><select id="thr" onchange="UI.setupDraft.threshold=+this.value">'+[1,2,3].map(n=>'<option '+(d.threshold===n?'selected':'')+'>'+n+'</option>').join('')+'</select>'+
+   '<label for="rel">Feedback release</label><select id="rel" onchange="UI.setupDraft.release=this.value"><option value="immediate" '+(d.release==='immediate'?'selected':'')+'>After each question</option><option value="after_complete" '+(d.release==='after_complete'?'selected':'')+'>After the review ends</option><option value="manual" '+(d.release==='manual'?'selected':'')+'>When I release it</option></select></div>';
+  h+='<button class="btn" onclick="saveSetup()">Save settings</button>';
+  return h;
+}
+function saveSetup(){
+  const asg=A2(),d=UI.setupDraft;
+  if(!Object.values(d.m).some(Boolean)){toast('Keep at least one mandatory check.');return;}
+  asg.checks.forEach(c=>c.mandatory=d.m[c.id]);asg.config.threshold=d.threshold;asg.config.release=d.release;
+  log(UI.user.name,'Updated settings for '+asg.title);toast('Settings saved. New submissions use them.');render();
+}
+function csv(){
+  const rows=[['student','assignment','checks_passed','checks_total','decision','understanding_status','points','max_points']];
+  S.threads.forEach(t=>{const v=lastV(t),p=points(t);rows.push([userOf(t.studentId).name,asgOf(t.asg).title,v.eval?v.eval.passed:'',v.eval?v.eval.total:'',v.decision||'',t.status,p.got,p.max]);});
+  return rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+}
+function copyCsv(){const t=csv();const done=()=>toast('CSV copied.');try{navigator.clipboard.writeText(t).then(done,()=>{toast('Copy was blocked. Select the table text instead.');});}catch(e){toast('Copy was blocked. Select the table text instead.');}}
+function vReports(){
+  const A=S.threads.filter(t=>t.asg==='A2'),n=A.length||1;
+  const seg=k=>Math.round(A.filter(t=>t.status===k).length/n*100);
+  let h='<div class="head"><div><h1>Reports</h1><p class="muted">Class report for '+esc(A2().title)+'</p></div><button class="btn" onclick="copyCsv()">Copy as CSV</button></div>';
+  h+='<div class="card"><h3>Status mix</h3>';
+  [['complete','Complete','ok'],['review','In Understanding Review','info'],['correction','In Guided Correction','warn'],['referred','Referred to instructor','warn'],['manual','On hold','mute']].forEach(([k,l])=>{h+='<div class="row" style="justify-content:space-between;margin-top:6px"><span>'+l+'</span><span class="mono">'+A.filter(t=>t.status===k).length+'</span></div><div class="bar"><span style="width:'+seg(k)+'%"></span></div>';});
+  h+='</div><div class="card"><h3>By student</h3><div class="scroll"><table><thead><tr><th>Student</th><th>Test evidence</th><th>AI-assisted review</th><th>Instructor actions</th></tr></thead><tbody>'+
+  S.threads.filter(t=>t.asg==='A2').map(t=>{const v=lastV(t),p=points(t);return '<tr class="click" onclick="openRec(\''+t.id+'\')"><td>'+esc(stuName(t))+'</td><td>'+(v.eval?v.eval.passed+' of '+v.eval.total+' checks, '+esc(v.decision):'not completed')+'</td><td>'+(p.max?p.got+' of '+p.max+' points':'none')+'</td><td>'+(t.actions.length?t.actions.map(a=>esc(a.label)).join('; '):'none')+'</td></tr>';}).join('')+'</tbody></table></div>'+
+  '<div class="note" style="margin-top:12px">Columns are kept apart on purpose: test evidence, AI interpretation, and instructor decisions are different kinds of evidence. This report shows no AI-usage percentage and no misconduct finding.</div></div>';
+  return h;
+}
+
+/* ---------- administrator views ---------- */
+function vAccounts(){
+  let h='<div class="head"><div><h1>Accounts</h1><p class="muted">Instructional and technical permissions stay separate.</p></div></div>';
+  h+='<div class="card"><div class="scroll"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>'+S.users.map(u=>
+   '<tr><td>'+esc(u.name)+'</td><td class="mono">'+esc(u.email)+'</td><td><select aria-label="Role for '+esc(u.name)+'" onchange="setRole(\''+u.id+'\',this.value)">'+['student','instructor','administrator'].map(r=>'<option '+(u.role===r?'selected':'')+'>'+r+'</option>').join('')+'</select></td><td>'+(u.active?pill('ok','active'):pill('mute','disabled'))+'</td><td><button class="btn sec sm" '+(u.id===UI.user.id?'disabled':'')+' onclick="toggleUser(\''+u.id+'\')">'+(u.active?'Disable':'Enable')+'</button></td></tr>').join('')+'</tbody></table></div></div>';
+  h+='<div class="note">Administrators manage access and operation. Reviewing student work requires Instructor permissions.</div>';
+  return h;
+}
+function setRole(id,r){const u=userOf(id);log(UI.user.name,'Changed role of '+u.email+' to '+r);u.role=r;toast('Role updated.');render();}
+function toggleUser(id){const u=userOf(id);u.active=!u.active;log(UI.user.name,(u.active?'Enabled ':'Disabled ')+u.email);render();}
+function vServices(){
+  const items=[['evaluator','Evaluator service','Runs instructor-defined checks in a sandbox. Simulated here.'],['ai','AI service','Generates questions and scores answers. Simulated here.'],['pathB','Path B module (Team 2)','Hints and correction loop. Simulated here.']];
+  let h='<div class="head"><div><h1>Services and Credentials</h1></div></div><div class="grid">';
+  h+=items.map(([k,n,d])=>'<div class="card"><h3>'+n+'</h3><div style="margin:6px 0">'+(S.services[k]?pill('ok','running'):pill('bad','simulated outage'))+'</div><p class="muted">'+d+'</p><button class="btn sec sm" onclick="toggleSvc(\''+k+'\')">'+(S.services[k]?'Simulate outage':'Restore service')+'</button></div>').join('');
+  h+='<div class="card"><h3>Router</h3><div style="margin:6px 0">'+pill('ok','running')+'</div><p class="muted">Rule-based and set by instructors. It does not depend on the AI.</p></div></div>';
+  h+='<div class="note">Try an outage, then submit as a student. The work is saved and routed to manual review instead of being marked incorrect.</div>';
+  h+='<div class="card"><h3>Approved AI credentials</h3><dl class="kv"><dt>Provider</dt><dd>Approved AI API (placeholder)</dd><dt>Key</dt><dd class="mono">••••••••••••a91f</dd><dt>Last rotated</dt><dd>'+fmt(S.keyRotated)+'</dd></dl><p class="muted">Credentials are never shown to other roles and never sent in a prompt.</p><button class="btn sec sm" onclick="rotateKey()">Rotate key</button></div>';
+  return h;
+}
+function toggleSvc(k){S.services[k]=!S.services[k];log(UI.user.name,(S.services[k]?'Restored ':'Simulated outage of ')+k);render();}
+function rotateKey(){S.keyRotated=new Date();log(UI.user.name,'Rotated AI credential');toast('Key rotated.');render();}
+function vAudit(){
+  return '<div class="head"><div><h1>Audit Log</h1><p class="muted">Pseudonymous student IDs only.</p></div></div><div class="card"><div class="scroll"><table><thead><tr><th>Time</th><th>Actor</th><th>Event</th></tr></thead><tbody>'+S.audit.slice(0,60).map(a=>'<tr><td>'+fmt(a.at)+'</td><td class="mono">'+esc(a.who)+'</td><td>'+esc(a.what)+'</td></tr>').join('')+'</tbody></table></div></div>';
+}
+function vBackups(){
+  return '<div class="head"><div><h1>Backups and Retention</h1></div></div><div class="card"><h3>Backups</h3><div class="scroll"><table><thead><tr><th>Taken</th><th>Size</th></tr></thead><tbody>'+S.backups.map(b=>'<tr><td>'+fmt(b.at)+'</td><td>'+b.size+'</td></tr>').join('')+'</tbody></table></div><div style="margin-top:10px"><button class="btn" onclick="runBackup()">Run backup now</button></div></div>'+
+  '<div class="card"><h3>Retention</h3><div class="note warn">No retention period has been approved. This prototype holds synthetic records only. Do not load real student data until an approved retention and access schedule exists.</div><dl class="kv"><dt>Student submissions</dt><dd>Configurable: active, archived, deleted</dd><dt>Assignment configurations</dt><dd>Kept separately; reusable</dd></dl></div>';
+}
+function runBackup(){S.backups.unshift({at:new Date(),size:'4.3 MB'});log(UI.user.name,'Ran backup');toast('Backup complete.');render();}
+
+/* ---------- shell ---------- */
+const VIEWS={home:vHome,submit:vSubmit,session:vSession,results:vResults,history:vHistory,overview:vOverview,records:vRecords,setup:vSetup,reports:vReports,accounts:vAccounts,services:vServices,audit:vAudit,backups:vBackups};
+function loginView(){
+  return '<div class="login"><div><h1>Understanding Review</h1><p>Submit your work, get requirement checks, then show you understand how your solution works. Instructors see the full evidence. Nothing here is an automatic grade or misconduct finding.</p>'+
+  '<div class="note">Prototype with synthetic people and data. The evaluator and the AI are simulated.</div></div>'+
+  '<form class="card" onsubmit="event.preventDefault();login()"><h3>Sign in</h3>'+
+  (UI.loginErr?'<div class="note bad" role="alert">'+esc(UI.loginErr)+'</div>':'')+
+  '<label for="em">Email</label><input id="em" value="'+esc(UI.email)+'" oninput="UI.email=this.value" style="width:100%" autocomplete="off">'+
+  '<label for="pw">Password</label><input id="pw" type="password" value="'+esc(UI.pw)+'" oninput="UI.pw=this.value" style="width:100%">'+
+  '<div style="margin-top:12px"><button class="btn" type="submit">Sign in</button></div>'+
+  '<div class="muted" style="margin-top:14px">Demo accounts (password is "demo")</div><div class="demoacct"><button type="button" class="btn sec sm" onclick="quick(\'ava@school.edu\')">Student: Ava</button><button type="button" class="btn sec sm" onclick="quick(\'rivera@school.edu\')">Instructor: Dr. Rivera</button><button type="button" class="btn sec sm" onclick="quick(\'admin@school.edu\')">Administrator: Sam</button></div></form></div>';
+}
+function render(){
+  const app=document.getElementById('app');
+  let html='<div class="banner"><span>Prototype · synthetic data · evaluator and AI are simulated</span><button onclick="resetDemo()">Reset demo data</button></div>';
+  if(!UI.user){html+=loginView();}
+  else{
+    const u=UI.user;
+    html+='<div class="topbar"><div class="brand">Understanding Review</div><div class="who"><span>'+esc(u.name)+'</span>'+pill('info',u.role)+'<button class="btn sec sm" onclick="logout()">Sign out</button></div></div>';
+    html+='<div class="shell"><nav class="rail" aria-label="Sections">'+NAV[u.role].map(([id,l])=>'<button class="'+(UI.view===id?'on':'')+'" onclick="go(\''+id+'\')">'+l+'</button>').join('')+'</nav><main class="main">'+(VIEWS[UI.view]?VIEWS[UI.view]():'')+'</main></div>';
+  }
+  if(UI.toast)html+='<div class="toast" role="status">'+esc(UI.toast)+'</div>';
+  app.innerHTML=html;
+}
+render();
+</script>
+
+</body></html>
