@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Homework Check — AI Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<style>
+  :root {
+    --maroon: #5a1f2e;
+    --maroon-dark: #3f1420;
+    --maroon-soft: #f4e9ec;
+    --line: #e7dfe1;
+    --text: #241a1d;
+    --muted: #7d7074;
+    --green: #2f7d4f;
+    --red: #b3261e;
+    --code-bg: #17181c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: #f3eeef;
+    font-family: Inter, system-ui, sans-serif;
+    color: var(--text);
+    font-size: 14px;
+  }
+  #root { height: 100%; }
+
+  .app {
+    height: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .title { margin: 0; font-size: 20px; font-weight: 700; color: var(--maroon-dark); }
+  .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+  /* Top work area scrolls; chat stays at the bottom */
+  .work { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 14px; font-weight: 700; }
+
+  .empty {
+    border: 1px dashed #d8c9cd; border-radius: 12px; background: #fff;
+    padding: 28px 16px; text-align: center; color: var(--muted);
+  }
+  .empty strong { display: block; color: var(--text); font-size: 15px; margin-bottom: 4px; }
+
+  .filebar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px;
+  }
+  .filebar .name { font-weight: 600; }
+  .filebar .meta { color: var(--muted); font-size: 12px; margin-left: 8px; }
+  .link-btn { background: none; border: 0; color: var(--maroon); font: inherit; font-weight: 600; cursor: pointer; }
+
+  .results { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+
+  /* Code snapshot */
+  .code-card { background: var(--code-bg); border-radius: 12px; overflow: hidden; color: #e6e6e6; }
+  .code-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: #a9abb3; border-bottom: 1px solid #2a2b31;
+  }
+  .code {
+    margin: 0; padding: 10px 0; font-family: "JetBrains Mono", monospace;
+    font-size: 12px; line-height: 1.65; max-height: 280px; overflow: auto;
+  }
+  .line { display: flex; white-space: pre; padding-right: 14px; }
+  .ln { width: 34px; flex: none; text-align: right; padding-right: 12px; color: #55575f; user-select: none; }
+  .more { padding: 6px 14px 10px; color: #7b7d86; font-size: 11px; font-family: "JetBrains Mono", monospace; }
+
+  /* Checklist */
+  .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .checks li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+  .checks .label { font-weight: 500; }
+  .checks .detail { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .checks li.pending { color: #b3a8ab; }
+  .status {
+    flex: none; width: 18px; height: 18px; border-radius: 5px;
+    border: 1.5px solid #cbbfc3; display: grid; place-items: center;
+    font-size: 11px; color: #fff; margin-top: 1px;
+  }
+  .running .status { border-color: var(--maroon); border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  .pass .status { background: var(--green); border-color: var(--green); }
+  .fail .status { background: var(--red); border-color: var(--red); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .score { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .score .big { font-size: 18px; font-weight: 700; color: var(--maroon); }
+  .bar { height: 5px; background: #eee6e8; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .fill { height: 100%; background: var(--maroon); transition: width .4s; }
+
+  /* Chat at bottom */
+  .chat {
+    flex: none;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(40, 20, 25, .08);
+    display: flex; flex-direction: column;
+    height: 340px;
+  }
+  .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .chat-head strong { font-size: 14px; }
+  .pill { font-size: 11px; background: var(--maroon-soft); color: var(--maroon); padding: 3px 10px; border-radius: 999px; font-weight: 500; }
+  .messages { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.me { justify-content: flex-end; }
+  .avatar { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; background: var(--maroon); color: #fff; }
+  .bubble { max-width: 78%; padding: 9px 13px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+  .bot .bubble { background: #faf6f7; border: 1px solid var(--line); border-top-left-radius: 4px; }
+  .me .bubble { background: var(--maroon); color: #fff; border-top-right-radius: 4px; }
+  .typing { display: flex; gap: 4px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  .composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  .composer textarea { flex: 1; resize: none; height: 42px; padding: 10px 12px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; }
+  .composer textarea:focus { outline: none; border-color: var(--maroon); box-shadow: 0 0 0 3px rgba(90, 31, 46, .12); }
+  .btn { background: var(--maroon); color: #fff; border: 0; padding: 0 18px; border-radius: 8px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: var(--maroon-dark); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  @media (max-width: 760px) {
+    .results { grid-template-columns: 1fr; }
+    .chat { height: 300px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const SNAPSHOT_LINES = 15;
+const STORAGE_KEY = "submission";
+
+/* ---------- The AI checks run on the submitted code ---------- */
+function buildChecks(code) {
+  const lines = code.split("\n");
+  const longLines = lines.filter((l) => l.length > 100).length;
+  const hasTabs = lines.some((l) => /^\t/.test(l));
+  const hasSpaces = lines.some((l) => /^ {2,}/.test(l));
+  const todos = (code.match(/\b(TODO|FIXME)\b/g) || []).length;
+  const fnCount = (code.match(/\bdef\s+\w+|\bfunction\s+\w+|\w+\s*=\s*\(?[\w\s,]*\)?\s*=>|\b(public|private|static|void|int|String)\s+\w+\s*\(/g) || []).length;
+  const commentCount = (code.match(/(^|\s)(#|\/\/|\/\*)/gm) || []).length;
+  const returns = (code.match(/\breturn\b/g) || []).length;
+
+  return [
+    {
+      label: "File received and readable",
+      pass: code.trim().length > 0,
+      detail: code.trim() ? `${lines.length} lines found` : "The file is empty",
+    },
+    {
+      label: "Defines at least one function",
+      pass: fnCount > 0,
+      detail: fnCount ? `${fnCount} function${fnCount > 1 ? "s" : ""} found` : "No functions detected",
+    },
+    {
+      label: "Functions return results",
+      pass: returns > 0,
+      detail: returns ? `${returns} return statement${returns > 1 ? "s" : ""}` : "No return statements found",
+    },
+    {
+      label: "Code includes comments",
+      pass: commentCount > 0,
+      detail: commentCount ? `${commentCount} comment${commentCount > 1 ? "s" : ""} found` : "Add comments to explain your logic",
+    },
+    {
+      label: "No unfinished TODO / FIXME notes",
+      pass: todos === 0,
+      detail: todos ? `${todos} left in the file` : "Looks finished",
+    },
+    {
+      label: "Consistent indentation",
+      pass: !(hasTabs && hasSpaces),
+      detail: hasTabs && hasSpaces ? "Mix of tabs and spaces" : "Indentation is consistent",
+    },
+    {
+      label: "Lines are a readable length",
+      pass: longLines === 0,
+      detail: longLines ? `${longLines} line${longLines > 1 ? "s" : ""} over 100 characters` : "All lines under 100 characters",
+    },
+  ];
+}
+
+/* ---------- Chat replies (replace with a real AI call later) ---------- */
+function getReply(text, file, checks, analysisDone) {
+  const t = text.toLowerCase();
+  const failed = checks.filter((c) => c.pass === false);
+
+  if (file && !analysisDone) return "I'm still checking your file — give me a second and ask again.";
+
+  if (file && /(result|score|grade|pass|fail|how did|check)/.test(t)) {
+    const passed = checks.length - failed.length;
+    if (!failed.length) return `Your file ${file.name} passed all ${checks.length} checks. Nice work!`;
+    return `${file.name} passed ${passed} of ${checks.length} checks.\n\nTo fix:\n` +
+      failed.map((c) => `• ${c.label} — ${c.detail}`).join("\n");
+  }
+  if (file && /(file|code|submit|upload)/.test(t)) {
+    return `I can see ${file.name} (${file.lines} lines). Ask me about your results, or about any part of your code.`;
+  }
+  if (/\b(hi|hello|hey)\b/.test(t)) {
+    return file
+      ? `Hi! I've looked at ${file.name}. Want me to go over your results?`
+      : "Hi! You can ask me anything about your homework, and once you submit your work I'll check it here.";
+  }
+  if (t.includes("?")) return "Good question — can you tell me a bit more about what you're thinking?";
+  return file
+    ? "Got it. Ask me about your results, or tell me which part of your code you'd like help with."
+    : "Thanks! Once you submit your work I can check it — until then, keep asking questions here.";
+}
+
+function App() {
+  const [file, setFile] = useState(null); // { name, size, lines, code }
+  const [checks, setChecks] = useState([]); // each: {label, detail, pass, state}
+  const [messages, setMessages] = useState([
+    { id: 1, from: "bot", text: "Hi! Ask me anything about your homework. Once you submit your work, I'll check it here too." },
+  ]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const endRef = useRef(null);
+  const timers = useRef([]);
+
+  const analysisDone = checks.length > 0 && checks.every((c) => c.state === "done");
+  const passedCount = checks.filter((c) => c.state === "done" && c.pass).length;
+  const doneCount = checks.filter((c) => c.state === "done").length;
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, typing]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  function addBot(text) {
+    setMessages((m) => [...m, { id: Date.now() + Math.random(), from: "bot", text }]);
+  }
+
+  // Loads homework sent from your other page.
+  function loadSubmission(sub) {
+    if (!sub || typeof sub.code !== "string") return;
+    const info = {
+      name: sub.name || "submission.txt",
+      size: sub.size ?? new Blob([sub.code]).size,
+      lines: sub.code.split("\n").length,
+      code: sub.code,
+    };
+    setFile(info);
+    runChecks(info);
+  }
+
+  useEffect(() => {
+    // 1) Your other page can call: window.loadSubmission({ name, code })
+    window.loadSubmission = loadSubmission;
+
+    // 2) Or save it before opening this page:
+    //    localStorage.setItem("submission", JSON.stringify({ name, code }))
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) loadSubmission(JSON.parse(saved));
+    } catch (e) {}
+
+    // Picks up a new submission saved from another tab
+    function onStorage(e) {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try { loadSubmission(JSON.parse(e.newValue)); } catch (err) {}
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  function runChecks(info) {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    const results = buildChecks(info.code);
+    setChecks(results.map((r) => ({ ...r, state: "pending" })));
+    addBot(`Got ${info.name}! Checking it now…`);
+
+    results.forEach((_, i) => {
+      timers.current.push(setTimeout(() => {
+        setChecks((cs) => cs.map((c, j) => (j === i ? { ...c, state: "running" } : c)));
+      }, i * 700 + 200));
+      timers.current.push(setTimeout(() => {
+        setChecks((cs) => cs.map((c, j) => (j === i ? { ...c, state: "done" } : c)));
+      }, i * 700 + 750));
+    });
+
+    timers.current.push(setTimeout(() => {
+      const failed = results.filter((r) => !r.pass);
+      addBot(failed.length
+        ? `Done! ${info.name} passed ${results.length - failed.length} of ${results.length} checks. Ask me "what failed?" and I'll explain.`
+        : `Done! ${info.name} passed all ${results.length} checks. Great job!`);
+    }, results.length * 700 + 900));
+  }
+
+  function send() {
+    const text = input.trim();
+    if (!text || typing) return;
+    setMessages((m) => [...m, { id: Date.now(), from: "me", text }]);
+    setInput("");
+    setTyping(true);
+    setTimeout(() => {
+      addBot(getReply(text, file, checks, analysisDone));
+      setTyping(false);
+    }, 800);
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  }
+
+  const snapshot = file ? file.code.split("\n").slice(0, SNAPSHOT_LINES) : [];
+
+  return (
+    <div className="app">
+      <header>
+        <h1 className="title">Homework check — AI feedback</h1>
+        <p className="subtitle">Your submitted work is checked here. You can ask the AI a question below at any time.</p>
+      </header>
+
+      <div className="work">
+        {!file ? (
+          <div className="empty">
+            <strong>No homework submitted yet</strong>
+            Once you submit your work, the AI's test results and a snapshot of your code will show up here.
+          </div>
+        ) : (
+          <>
+            <div className="filebar">
+              <div>
+                <span className="name">{file.name}</span>
+                <span className="meta">{file.lines} lines · {(file.size / 1024).toFixed(1)} KB</span>
+              </div>
+            </div>
+
+            <div className="results">
+              <div className="card">
+                <h2>AI test results</h2>
+                <ul className="checks">
+                  {checks.map((c) => {
+                    const cls = c.state === "done" ? (c.pass ? "pass" : "fail") : c.state;
+                    return (
+                      <li key={c.label} className={cls}>
+                        <span className="status">{c.state === "done" ? (c.pass ? "✓" : "✕") : ""}</span>
+                        <div>
+                          <div className="label">{c.label}</div>
+                          <div className="detail">
+                            {c.state === "done" ? c.detail : c.state === "running" ? "Checking…" : "Waiting"}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="score">
+                  <span className="detail" style={{ color: "var(--muted)", fontSize: 12 }}>
+                    {analysisDone ? "Check complete" : `Checking ${doneCount} of ${checks.length}…`}
+                  </span>
+                  <span className="big">{passedCount}/{checks.length}</span>
+                </div>
+                <div className="bar">
+                  <div className="fill" style={{ width: `${checks.length ? (doneCount / checks.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+
+              <div className="code-card">
+                <div className="code-head">
+                  <span>{file.name}</span>
+                  <span>snapshot</span>
+                </div>
+                <pre className="code">
+                  {snapshot.map((line, i) => (
+                    <div key={i} className="line">
+                      <span className="ln">{i + 1}</span>
+                      <span>{line || " "}</span>
+                    </div>
+                  ))}
+                </pre>
+                {file.lines > SNAPSHOT_LINES && (
+                  <div className="more">… {file.lines - SNAPSHOT_LINES} more lines</div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <section className="chat">
+        <div className="chat-head">
+          <strong>AI chat</strong>
+          <span className="pill">{file ? `Using ${file.name}` : "No work submitted"}</span>
+        </div>
+        <div className="messages">
+          {messages.map((m) => (
+            <div key={m.id} className={`msg ${m.from}`}>
+              {m.from === "bot" && <span className="avatar">AI</span>}
+              <div className="bubble">{m.text}</div>
+            </div>
+          ))}
+          {typing && (
+            <div className="msg bot">
+              <span className="avatar">AI</span>
+              <div className="bubble typing"><span></span><span></span><span></span></div>
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+        <div className="composer">
+          <textarea
+            placeholder="Ask the AI anything…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+          />
+          <button className="btn" onClick={send} disabled={!input.trim() || typing}>Send</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
