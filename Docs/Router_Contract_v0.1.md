@@ -70,8 +70,8 @@ Format matches the server messages we already use. All the values in the example
 
 ## Questions I still need answered
 
-- Nyles: what do you want the field names and types to be on your server? I'm happy to rename mine to match.
-- Nyles: should the router write the result straight into Supabase, or send it through your server? I think we need a small table for it (submission ID, tests passed and total, route, evaluator version, reason, timestamp).
+- Team 2: what do you want the field names and types to be on your server? I'm happy to rename mine to match.
+- Team 2: should the router write the result straight into Supabase, or send it through your server? I think we need a small table for it (submission ID, tests passed and total, route, evaluator version, reason, timestamp).
 - Team 2: how many retests before Path B escalates to the instructor?
 - Team 2: when a revised submission passes, does it come back through the router again?
 - Everyone: the message doc has an "aiUseScore" in getReportInfo and onPassPathA. What is that supposed to be, and where does the number come from?
