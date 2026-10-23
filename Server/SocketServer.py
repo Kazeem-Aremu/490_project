@@ -88,21 +88,76 @@ class Server():
                             if data["MESSAGE"]["BY"] == "CourseID":
                                 try:
                                     print("Getting AssignmentInfo by CourseID")
-                                    response = self.database.getAssignmentByCourse()
-                                except ValueError:
-                                    print(f"ERROR in /getUser: {e}")
+                                    course_id_raw = data["MESSAGE"]["INFO"]["COURSEID"]
+                                    response = self.database.getAssignmentByCourse(int(course_id_raw))
+                                except ValueError as e:
+                                    print(f"ERROR in get assignment by course: {e}")
+                                    response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
+                                finally:
+                                    self.emit(response, client_socket, client_addr)
+                            elif data["MESSAGE"]["BY"] == "AssignmentId":
+                                try:
+                                    print("Getting AssignmentInfo by AssignmetID")
+                                    Assignment_id_raw = data["MESSAGE"]["INFO"]["ASSIGNMENTID"]
+                                    response = self.database.getAssignment(int(Assignment_id_raw))
+                                except ValueError as e:
+                                    print(f"ERROR in /getAssignment by ID: {e}")
+                                    response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
+                                finally:
+                                    self.emit(response, client_socket, client_addr)
+                        elif data["MESSAGE"]["INFO"] == "getCourseInfo":
+                            if data["MESSAGE"]["BY"] == "teacherID":
+                                try:
+                                    print("Getting Course info By teacherID")
+                                    teacher_Id_Raw = data["MESSAGE"]["INFO"]["teacherID"]
+                                    response = self.database.getCourseByTeacher(int(teacher_Id_Raw))
+                                except ValueError as e:
+                                    print(f"ERROR in get course by teacher id: {e}")
+                                    response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
+
+                                finally:
+                                    self.emit(response, client_socket, client_addr)
+                                
+                            elif data["MESSAGE"]["INFO"] == "CourseID":
+                                try: 
+                                    print("Getting Course info by teacherID")
+                                    course_id_raw = data["MESSAGE"]["INFO"]["CourseID"]
+                                    response = self.database.getCoursebyId(int(course_id_raw))
+                                except ValueError as e: 
+                                    print(f"ERROR in get course by course id: {e}")
                                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
                                 finally:
                                     self.emit(response, client_socket, client_addr)
                         elif data["MESSAGE"]["INFO"] == "reportInfo":
                             pass
-                        elif data["MESSAGE"]["INFO"] == "CourseInfo":
-                            pass
                         elif data["MESSAGE"]["INFO"] == "Enrollement":
+                            if data["MESSAGE"]["BY"] == "Course":
+                                try: 
+                                    print("getting Enrollment info by the course ID")
+                                    course_id_raw = data["MESSAGE"]["INFO"]["CourseID"]
+                                    response = self.database.getEnrollmentByCourse(int(course_id_raw))
+                                except ValueError as e:
+                                    print(f"ERROR in get enrollement by course id: {e}")
+                                    response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
+                                finally:
+                                    self.emit(response, client_socket, client_socket)
+
+                            elif data["MESSAGE"]["BY"] == "UserID":
+                                try: 
+                                    print("getting Enrollment info by the user id")
+                                    user_id_raw = data["MESSAGE"]["INFO"]["userID"]
+                                    response = self.database.getEnrollmentByUser(int(user_id_raw))
+                                except ValueError as e:
+                                    print(f"ERROR in get enrollment by course id: {e}")
+                                    response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
+                                finally:
+                                    self.emit(response, client_socket, client_socket) 
+                        elif data["MESSAGE"]["INFO"] == "getAiConversation":
                             pass
                         else:
                             reply = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
                             self.emit(reply, client_socket, client_addr, client_addr)
+
                     elif data["MESSAGE"]["METHOD"] == "POST":
                         pass
 
