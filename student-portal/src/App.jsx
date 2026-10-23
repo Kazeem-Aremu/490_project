@@ -1,18 +1,42 @@
-
 import { useState } from "react";
 import "./App.css";
 
+const headings = {
+  login: {
+    title: "Welcome back!",
+    description: "Sign in to continue to your account.",
+    button: "Sign In",
+  },
+  signup: {
+    title: "Create your account",
+    description: "Enter your details to get started.",
+    button: "Create Account",
+  },
+  forgot: {
+    title: "Forgot your password?",
+    description: "Enter the email linked to your account and we'll send you a link to reset your password.",
+    button: "Send Reset Link",
+  },
+};
+
 function App() {
-  const [isSignup, setIsSignup] = useState(false);
+  const [view, setView] = useState("login");
   const [message, setMessage] = useState("");
+
+  const isSignup = view === "signup";
+  const isForgot = view === "forgot";
 
   function handleSubmit(event) {
     event.preventDefault();
-    setMessage("Prototype only! Authentication will be added later.");
+    if (isForgot) {
+      setMessage("Prototype only! If an account exists for that email, a reset link will be sent once email is set up.");
+    } else {
+      setMessage("Prototype only! Authentication will be added later.");
+    }
   }
 
-  function switchForm() {
-    setIsSignup(!isSignup);
+  function changeView(nextView) {
+    setView(nextView);
     setMessage("");
   }
 
@@ -33,12 +57,8 @@ function App() {
         <div className="form-panel">
           <div className="mobile-logo">S</div>
           <p className="eyebrow form-eyebrow">HAWK STUDENT PORTAL</p>
-          <h2>{isSignup ? "Create your account" : "Welcome back!"}</h2>
-          <p className="form-description">
-            {isSignup
-              ? "Enter your details to get started."
-              : "Sign in to continue to your account."}
-          </p>
+          <h2>{headings[view].title}</h2>
+          <p className="form-description">{headings[view].description}</p>
 
           <form onSubmit={handleSubmit}>
             {isSignup && (
@@ -53,10 +73,12 @@ function App() {
               <input id="email" type="email" placeholder="you@example.com" required />
             </div>
 
-            <div className="input-group">
-              <label htmlFor="password">Password</label>
-              <input id="password" type="password" placeholder="Enter your password" required />
-            </div>
+            {!isForgot && (
+              <div className="input-group">
+                <label htmlFor="password">Password</label>
+                <input id="password" type="password" placeholder="Enter your password" required />
+              </div>
+            )}
 
             {isSignup && (
               <div className="input-group">
@@ -65,29 +87,44 @@ function App() {
               </div>
             )}
 
-            {!isSignup && (
+            {view === "login" && (
               <div className="form-options">
                 <label className="remember-option">
                   <input type="checkbox" />
                   Remember me
                 </label>
-                <span className="muted-link">Forgot password?</span>
+                <button className="muted-link" type="button" onClick={() => changeView("forgot")}>
+                  Forgot password?
+                </button>
               </div>
             )}
 
             <button className="submit-button" type="submit">
-              {isSignup ? "Create Account" : "Sign In"}
+              {headings[view].button}
             </button>
           </form>
 
           {message && <p className="prototype-message">{message}</p>}
 
-          <p className="switch-text">
-            {isSignup ? "Already have an account?" : "Don't have an account?"}
-            <button className="switch-button" type="button" onClick={switchForm}>
-              {isSignup ? "Sign in" : "Sign up"}
-            </button>
-          </p>
+          {isForgot ? (
+            <p className="switch-text">
+              Remembered your password?
+              <button className="switch-button" type="button" onClick={() => changeView("login")}>
+                Back to sign in
+              </button>
+            </p>
+          ) : (
+            <p className="switch-text">
+              {isSignup ? "Already have an account?" : "Don't have an account?"}
+              <button
+                className="switch-button"
+                type="button"
+                onClick={() => changeView(isSignup ? "login" : "signup")}
+              >
+                {isSignup ? "Sign in" : "Sign up"}
+              </button>
+            </p>
+          )}
 
           <p className="legal-text">Student Portal Prototype</p>
         </div>

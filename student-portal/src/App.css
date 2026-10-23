@@ -164,6 +164,10 @@ button, input {
 }
 
 .muted-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
   color: #3265a6;
   cursor: pointer;
 }
