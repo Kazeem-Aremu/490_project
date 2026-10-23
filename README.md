@@ -2,6 +2,11 @@
 
 ## Authors:
 ### Team 1
+- Garrick Thomas
+- Ayo Omotola
+- Miles Magruder
+- Jossie Gates
+- Misael Ramos​
 
 ### Team 2
 - Nyles Burton
