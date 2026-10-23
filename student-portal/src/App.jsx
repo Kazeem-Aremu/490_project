@@ -44,7 +44,7 @@ function App() {
     <main className="page">
       <section className="auth-card">
         <div className="welcome-panel">
-          <div className="logo">S</div>
+          <div className="logo">H</div>
           <p className="eyebrow">YOUR LEARNING SPACE</p>
           <h1>Learn, grow, and reach your goals.</h1>
           <p className="welcome-text">
@@ -55,17 +55,36 @@ function App() {
         </div>
 
         <div className="form-panel">
-          <div className="mobile-logo">S</div>
-          <p className="eyebrow form-eyebrow">HAWK STUDENT PORTAL</p>
+          <div className="mobile-logo">H</div>
+          <p className="eyebrow form-eyebrow">Insert Title Here</p>
           <h2>{headings[view].title}</h2>
           <p className="form-description">{headings[view].description}</p>
 
           <form onSubmit={handleSubmit}>
             {isSignup && (
-              <div className="input-group">
-                <label htmlFor="fullName">Full name</label>
-                <input id="fullName" type="text" placeholder="Enter your name" required />
-              </div>
+              <>
+                <div className="input-group">
+                  <label htmlFor="firstName">First name</label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    placeholder="Enter your first name"
+                    autoComplete="given-name"
+                    required
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="lastName">Last name</label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    placeholder="Enter your last name"
+                    autoComplete="family-name"
+                    required
+                  />
+                </div>
+              </>
             )}
 
             <div className="input-group">
@@ -126,7 +145,7 @@ function App() {
             </p>
           )}
 
-          <p className="legal-text">Student Portal Prototype</p>
+          <p className="legal-text">Student Login/Signup Page Prototype</p>
         </div>
       </section>
     </main>
