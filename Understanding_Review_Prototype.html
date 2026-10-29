@@ -196,10 +196,33 @@ function evaluate(code){
   const checks=asg.checks.map(c=>({id:c.id,ok:!!TESTS[c.id](code)}));
   return{checks,passed:checks.filter(c=>c.ok).length,total:checks.length,suite:'s1.2',diag:checks.filter(c=>!c.ok).map(c=>asg.checks.find(x=>x.id===c.id).diag),at:new Date()};
 }
+/* WS2 router v0.2 (JS port of Router/router.py, same rules, same 11 test cases).
+   The AI never decides correctness: only the instructor's checks do. */
+function routeDecision(o){
+  const w=[];
+  if(!o.uploadValid) return ['REJECTED','INVALID_UPLOAD',w];
+  if(o.errorStatus==='CRASH'||o.errorStatus==='SANDBOX_ERROR') return ['MANUAL_REVIEW','EVALUATOR_ERROR',w];
+  if(o.errorStatus==='PROHIBITED_ACTION') return ['MANUAL_REVIEW','PROHIBITED_ACTION',w];
+  if(!o.testSuiteOk||!o.testsTotal) return ['MANUAL_REVIEW','TEST_SUITE_MISSING',w];
+  if(o.compileStatus!=='SUCCESS') return ['FAIL','SYNTAX_ERROR',w];
+  if(o.errorStatus==='TIMEOUT') return ['FAIL','TIMEOUT',w];
+  if(o.errorStatus==='MEMORY_LIMIT') return ['FAIL','MEMORY_LIMIT',w];
+  if(o.errorStatus==='RUNTIME_EXCEPTION') return ['FAIL','RUNTIME_EXCEPTION',w];
+  if(o.testsPassed<o.threshold) return ['FAIL','WRONG_OUTPUT',w];
+  if((o.commentLines||0)<(o.minComments||0)) w.push('MISSING_COMMENTS');
+  return ['PASS',null,w];
+}
 function route(ev,asg){
-  if(!ev) return{d:'MANUAL REVIEW',why:'No evaluation evidence'};
-  const unmet=ev.checks.filter(c=>!c.ok&&asg.checks.find(x=>x.id===c.id).mandatory);
-  return unmet.length?{d:'FAIL',why:unmet.length+' mandatory check'+(unmet.length>1?'s':'')+' not met'}:{d:'PASS',why:'All mandatory checks met'};
+  if(!ev) return{d:'MANUAL REVIEW',why:'No evaluation evidence',code:'EVALUATOR_ERROR'};
+  const mand=asg.checks.filter(c=>c.mandatory);
+  const passedMand=ev.checks.filter(c=>c.ok&&asg.checks.find(x=>x.id===c.id).mandatory).length;
+  const r=routeDecision({uploadValid:true,compileStatus:'SUCCESS',errorStatus:null,
+    testsPassed:passedMand,testsTotal:mand.length,threshold:mand.length,testSuiteOk:true});
+  const unmet=mand.length-passedMand;
+  const why=r[0]==='PASS'?'All mandatory checks met'
+    :r[0]==='FAIL'?unmet+' mandatory check'+(unmet>1?'s':'')+' not met'
+    :'Needs a person to check ('+r[1]+')';
+  return{d:r[0].replace('_',' '),why,code:r[1]};
 }
 function addRoute(th,t){th.routing.push({at:new Date(),t});}
 function validateUpload(name,code){
@@ -235,7 +258,7 @@ function doSubmit(){
 function applyRouting(th,v,wasRevision){
   const asg=A2(),r=route(v.eval,asg);
   v.decision=r.d;
-  addRoute(th,'Evaluation complete: '+v.eval.passed+' of '+v.eval.total+' checks. Decision '+r.d+' ('+r.why+').');
+  addRoute(th,'Evaluation complete: '+v.eval.passed+' of '+v.eval.total+' checks. Decision '+r.d+' ('+r.why+'). Router v0.2.');
   if(r.d==='PASS'){
     if(!S.services.ai){th.status='manual';th.hold='The AI service was unavailable, so the Understanding Review could not start. Nothing was marked incorrect.';addRoute(th,'Path A could not start (AI service unavailable). Status: MANUAL REVIEW.');return;}
     addRoute(th,wasRevision?'Revised submission passed. Proceeding to Path A: Understanding Review.':'Routed to Path A: Understanding Review.');
