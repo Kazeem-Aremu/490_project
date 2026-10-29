@@ -1,0 +1,13 @@
+PASS 1 Happy path: correct sum_even.py | expected: PASS, Path A question 1
+     {"status": "review", "hold": null, "decision": ["PASS"], "firstQ": "Walk through what happens inside your loop when nums is [2, 3, 4]. What is the running total after each pass?", "route": ["Evaluation complete: 5 of 5 checks. Decision PASS (All mandatory checks met). Router v0.2.", "Routed to Path A: Understanding Review."]}
+PASS 2 Fail path: version with a bug | expected: FAIL, routed to Path B
+     {"status": "correction", "hold": null, "decision": ["FAIL"], "firstQ": null, "route": ["Evaluation complete: 4 of 5 checks. Decision FAIL (1 mandatory check not met). Router v0.2.", "Routed to Path B: Guided Correction."]}
+PASS 3 Evaluator down | expected: Saved, MANUAL REVIEW, not marked wrong
+     {"status": "manual", "hold": "The evaluator was unavailable. Your submission is saved and has not been marked incorrect.", "decision": [null], "firstQ": null, "route": ["Evaluation unavailable. Record preserved. Status: MANUAL REVIEW."]}
+PASS 4 AI down, correct file | expected: PASS but Path A cannot start, MANUAL REVIEW
+     {"status": "manual", "hold": "The AI service was unavailable, so the Understanding Review could not start. Nothing was marked incorrect.", "decision": ["PASS"], "firstQ": null, "route": ["Evaluation complete: 5 of 5 checks. Decision PASS (All mandatory checks met). Router v0.2.", "Path A could not start (AI service unavailable). Status: MANUAL REVIEW."]}
+PASS 5 Bad upload: .txt file | expected: Rejected with message, no attempt saved
+     {"message": "This file type is not accepted. Upload a Python file that ends in .py.", "thread": null}
+page errors: []
+
+5/5 scenarios as expected with router v0.2 wired in
