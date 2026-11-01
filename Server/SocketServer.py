@@ -2,6 +2,9 @@ import socket
 import json
 import threading
 from DataBaseHandler import DataBaseHandler
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Router"))
+from router_endpoint import handle_route_submission
 #HOST = "127.0.0.1"
 #PORT = 8342
 hostname = socket.socket()
@@ -159,7 +162,9 @@ class Server():
                             self.emit(reply, client_socket, client_addr, client_addr)
 
                     elif data["MESSAGE"]["METHOD"] == "POST":
-                        pass
+                        if data["MESSAGE"].get("INFO") == "routeSubmission":
+                            print("received routeSubmission request")
+                            self.emit(handle_route_submission(data), client_socket, client_addr)
 
                 except Exception as e:
                     #later send a 500 error code to client
