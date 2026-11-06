@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./App.css";
+import { supabase } from './supabaseClient'
 
 const headings = {
   login: {
@@ -22,16 +23,62 @@ const headings = {
 function App() {
   const [view, setView] = useState("login");
   const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
   const isSignup = view === "signup";
   const isForgot = view === "forgot";
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    if (isForgot) {
-      setMessage("Prototype only! If an account exists for that email, a reset link will be sent once email is set up.");
+    setMessage("");
+
+    if (isSignup) {
+      if (password !== confirmPassword) {
+        setMessage("Passwords do not match.");
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
+      });
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        setMessage("Account created! Check your email if confirmation is required.");
+      }
+
+    } else if (isForgot) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        setMessage("If an account exists for that email, a reset link will be sent.");
+      }
+
     } else {
-      setMessage("Prototype only! Authentication will be added later.");
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        setMessage("Login successful!");
+      }
     }
   }
 
@@ -70,6 +117,8 @@ function App() {
                     type="text"
                     placeholder="Enter your first name"
                     autoComplete="given-name"
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
                     required
                   />
                 </div>
@@ -81,6 +130,8 @@ function App() {
                     type="text"
                     placeholder="Enter your last name"
                     autoComplete="family-name"
+                    value={lastName}
+                    onChange={(event) => setLastName(event.target.value)}
                     required
                   />
                 </div>
@@ -89,20 +140,29 @@ function App() {
 
             <div className="input-group">
               <label htmlFor="email">Email address</label>
-              <input id="email" type="email" placeholder="you@example.com" required />
+              <input id="email" type="email" placeholder="you@example.com"  
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              />
             </div>
 
             {!isForgot && (
               <div className="input-group">
                 <label htmlFor="password">Password</label>
-                <input id="password" type="password" placeholder="Enter your password" required />
+                <input id="password" type="password" placeholder="Enter your password" 
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}required />
               </div>
             )}
 
             {isSignup && (
               <div className="input-group">
                 <label htmlFor="confirmPassword">Confirm password</label>
-                <input id="confirmPassword" type="password" placeholder="Re-enter your password" required />
+                <input id="confirmPassword" type="password" placeholder="Re-enter your password" 
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required />
               </div>
             )}
 
