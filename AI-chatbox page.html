@@ -1,29 +1,42 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Homework Check — AI Feedback</title>
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-  <!-- Your styles -->
-  <link rel="stylesheet" href="styles.css" />
-
-  <!-- Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Supabase connection -->
-  <script>
-    const db = window.supabase.createClient(
-      'https://xsfipfsslgdjnelbgypu.supabase.co',
-      'sb_publishable_CCwu2bpoYWtXQFZbQU1nHA_5Pgl_5u_'
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Homework Check — AI Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  // Your Supabase project (the same one your signup page and dashboard use)
+  var db = null;
+  try {
+    db = window.supabase.createClient(
+      "https://xsfipfsslgdjnelbgypu.supabase.co",
+      "sb_publishable_CCwu2bpoYWtXQFZbQU1nHA_5Pgl_5u_"
     );
-  </script>
+  } catch (e) { console.error("Supabase:", e); }
+</script>
+<!-- Your chat box stylesheet (keep styles.css in the same folder as this page) -->
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* Only the pieces added for file transfer; everything else comes from styles.css */
+  .link-btn:disabled { color: var(--muted); cursor: default; }
+  .attach { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+  .attach .fname { font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 500; }
+  .attach .fmeta { font-size: 11.5px; opacity: .8; }
+  .attach .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .me .attach .link-btn { color: #fff; text-decoration: underline; padding: 0; }
+  .me .attach .link-btn:disabled { color: rgba(255,255,255,.7); text-decoration: none; }
+  .clip {
+    flex: none; width: 42px; display: grid; place-items: center; border: 1px solid var(--line);
+    border-radius: 8px; background: #fff; color: var(--maroon); cursor: pointer; font-size: 18px;
+  }
+  .clip:hover { border-color: var(--maroon); background: #fbf6f7; }
+  .clip input { display: none; }
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -32,7 +45,41 @@
 const { useState, useRef, useEffect } = React;
 
 const SNAPSHOT_LINES = 15;
-const STORAGE_KEY = "submission";
+const STORAGE_KEY = "submission";        // dashboard -> chat box
+const TO_DASHBOARD_KEY = "chatbox_file"; // chat box -> dashboard
+const MAX_ATTACH = 2 * 1024 * 1024;
+const BUCKET = "homework-files"; // Supabase Storage bucket (see setup_files.sql)
+
+/* ---------- Supabase file helpers ---------- */
+const safeName = (n) => String(n).replace(/[^\w.\-]+/g, "_").slice(0, 120) || "file";
+
+async function cloudUpload(user, blob, name, type, location, origin) {
+  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName(name)}`;
+  const up = await db.storage.from(BUCKET).upload(path, blob, { contentType: type || "text/plain" });
+  if (up.error) throw up.error;
+  const ins = await db.from("files").insert({ location, name, path, size: blob.size, type: type || "", origin }).select().single();
+  if (ins.error) { await db.storage.from(BUCKET).remove([path]); throw ins.error; }
+  return ins.data;
+}
+
+async function cloudText(row) {
+  const { data, error } = await db.storage.from(BUCKET).download(row.path);
+  if (error) throw error;
+  return await data.text();
+}
+
+/* ---------- Sends a file to the dashboard page ---------- */
+function sendToDashboard(f) {
+  const payload = { name: f.name, code: f.code, size: f.size, sentAt: Date.now() };
+  let sent = false;
+  // Works when this page was opened from the dashboard, even straight from a folder.
+  if (window.opener && !window.opener.closed) {
+    try { window.opener.postMessage({ type: "chatbox_file", ...payload }, "*"); sent = true; } catch (e) {}
+  }
+  // Also works when both pages are open from the same site in different tabs.
+  try { localStorage.setItem(TO_DASHBOARD_KEY, JSON.stringify(payload)); sent = true; } catch (e) {}
+  return sent;
+}
 
 /* ---------- The AI checks run on the submitted code ---------- */
 function buildChecks(code) {
@@ -97,6 +144,9 @@ function getReply(text, file, checks, analysisDone) {
     return `${file.name} passed ${passed} of ${checks.length} checks.\n\nTo fix:\n` +
       failed.map((c) => `• ${c.label} — ${c.detail}`).join("\n");
   }
+  if (/(save|dashboard|send)/.test(t)) {
+    return "To move a file to your dashboard, attach it with the 📎 button and press \"Save to dashboard\" on it. The submitted file has the same button at the top.";
+  }
   if (file && /(file|code|submit|upload)/.test(t)) {
     return `I can see ${file.name} (${file.lines} lines). Ask me about your results, or about any part of your code.`;
   }
@@ -119,9 +169,11 @@ function App() {
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [user, setUser] = useState(null); // the student signed in on your signup page
+  const [savedIds, setSavedIds] = useState({}); // which files were saved to the dashboard
+  const [sbUser, setSbUser] = useState(undefined); // Supabase student; undefined = still checking
   const endRef = useRef(null);
   const timers = useRef([]);
+  const lastSent = useRef(null);
 
   const analysisDone = checks.length > 0 && checks.every((c) => c.state === "done");
   const passedCount = checks.filter((c) => c.state === "done" && c.pass).length;
@@ -133,79 +185,104 @@ function App() {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Picks up the login from your signup page (same Supabase project, same site)
-  useEffect(() => {
-    db.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
-    const { data } = db.auth.onAuthStateChange((_event, s) => setUser(s?.user ?? null));
-    return () => data.subscription.unsubscribe();
-  }, []);
-
   function addBot(text) {
     setMessages((m) => [...m, { id: Date.now() + Math.random(), from: "bot", text }]);
   }
 
-  // Loads homework sent from your other page.
+  // Loads homework sent from the dashboard page.
   function loadSubmission(sub) {
     if (!sub || typeof sub.code !== "string") return;
+    // The same file can arrive twice (saved storage + direct hand-off); only check it once
+    if (sub.sentAt && lastSent.current === sub.sentAt) return;
+    if (sub.sentAt) lastSent.current = sub.sentAt;
     const info = {
+      id: "sub-" + (sub.sentAt || Date.now()),
       name: sub.name || "submission.txt",
       size: sub.size ?? new Blob([sub.code]).size,
       lines: sub.code.split("\n").length,
       code: sub.code,
+      path: sub.path,
+      type: sub.type,
+      origin: sub.origin,
     };
     setFile(info);
     runChecks(info);
   }
 
   useEffect(() => {
-    // 1) Your other page can call: window.loadSubmission({ name, code })
+    // 1) Same page: window.loadSubmission({ name, code })
     window.loadSubmission = loadSubmission;
 
-    // 2) Or save it before opening this page:
-    //    localStorage.setItem("submission", JSON.stringify({ name, code }))
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) loadSubmission(JSON.parse(saved));
-    } catch (e) {}
+    // 2) Saved before this page opened: localStorage "submission" = { name, code }
+    //    (only used when the student isn't signed in to Supabase)
+    const useLocal = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) loadSubmission(JSON.parse(saved));
+      } catch (e) {}
+    };
+    if (!db) { setSbUser(null); useLocal(); }
+    else db.auth.getSession()
+      .then(({ data }) => { const u = data.session ? data.session.user : null; setSbUser(u); if (!u) useLocal(); })
+      .catch(() => { setSbUser(null); useLocal(); });
 
-    // Picks up a new submission saved from another tab
+    // A new submission saved from another tab
     function onStorage(e) {
       if (e.key !== STORAGE_KEY || !e.newValue) return;
       try { loadSubmission(JSON.parse(e.newValue)); } catch (err) {}
     }
+    // 3) Sent directly by the dashboard that opened this page
+    function onMessage(e) {
+      if (!window.opener || e.source !== window.opener) return;
+      const d = e.data || {};
+      if (d.type === "submission") loadSubmission(d);
+    }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("message", onMessage);
+    // Tell the dashboard this page is ready to receive a file.
+    if (window.opener) { try { window.opener.postMessage({ type: "chatbox_ready" }, "*"); } catch (e) {} }
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("message", onMessage);
+    };
   }, []);
 
-  // Saves the submission and its results to the Supabase "submissions" table
-  async function saveSubmission(info, results) {
-    const { data } = await db.auth.getSession();
-    const u = data.session?.user;
-    if (!u) {
-      addBot("Your work was checked, but it wasn't saved because you're not signed in.");
-      return;
+  // 4) Supabase: load the newest file sent from the dashboard, then listen for new ones
+  useEffect(() => {
+    if (!db || !sbUser) return;
+    let alive = true;
+
+    async function openRow(row, announce) {
+      try {
+        const code = await cloudText(row);
+        if (!alive) return;
+        if (code.includes("\u0000")) { addBot(`${row.name} isn't a text or code file, so I can't check it.`); return; }
+        if (announce) {
+          setMessages((m) => [...m, { id: "in-" + row.id, from: "me", file: { id: "row-" + row.id, name: row.name, size: row.size, lines: code.split("\n").length, code, path: row.path, type: row.type, fromDash: row.origin === "dashboard" } }]);
+        }
+        loadSubmission({ name: row.name, size: row.size, code, path: row.path, type: row.type, origin: row.origin, sentAt: "row-" + row.id });
+      } catch (e) {
+        console.error("Supabase:", e.message);
+        addBot(`I couldn't open ${row.name} from your dashboard. Try sending it again.`);
+      }
     }
 
-    // Skip saving if this exact file was already saved (e.g. after a page refresh)
-    const key = "saved:" + u.id;
-    const fp = info.name + ":" + info.code.length + ":" + info.code.slice(0, 200);
-    if (localStorage.getItem(key) === fp) return;
+    db.from("files").select("*").eq("location", "chat").in("origin", ["dashboard", "submission"])
+      .order("created_at", { ascending: false }).limit(1)
+      .then(({ data, error }) => {
+        if (error) { console.error("Supabase:", error.message); return; }
+        if (data && data[0]) openRow(data[0], false);
+      });
 
-    const { error } = await db.from("submissions").insert({
-      user_id: u.id,
-      file_name: info.name,
-      code: info.code,
-      checks: results.map(({ label, pass, detail }) => ({ label, pass, detail })),
-      passed: results.filter((r) => r.pass).length,
-      total: results.length,
-    });
-    if (error) {
-      console.error("Supabase:", error.message);
-      addBot("Your work was checked, but it couldn't be saved. Try refreshing the page.");
-      return;
-    }
-    localStorage.setItem(key, fp);
-  }
+    const chan = db.channel("chatbox-" + sbUser.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "files", filter: "user_id=eq." + sbUser.id }, (p) => {
+        const row = p.new;
+        if (row && row.location === "chat" && (row.origin === "dashboard" || row.origin === "submission")) openRow(row, true);
+      })
+      .subscribe();
+
+    return () => { alive = false; db.removeChannel(chan); };
+  }, [sbUser]);
 
   function runChecks(info) {
     timers.current.forEach(clearTimeout);
@@ -228,8 +305,56 @@ function App() {
       addBot(failed.length
         ? `Done! ${info.name} passed ${results.length - failed.length} of ${results.length} checks. Ask me "what failed?" and I'll explain.`
         : `Done! ${info.name} passed all ${results.length} checks. Great job!`);
-      saveSubmission(info, results);
     }, results.length * 700 + 900));
+  }
+
+  // Attach a file in the chat
+  function attachFile(f) {
+    if (!f) return;
+    if (f.size > MAX_ATTACH) { addBot(`${f.name} is larger than 2 MB, so I couldn't attach it.`); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const code = String(reader.result || "");
+      const att = { id: "att-" + Date.now(), name: f.name, size: f.size, lines: code.split("\n").length, code, type: f.type };
+      setMessages((m) => [...m, { id: Date.now(), from: "me", file: att }]);
+      if (db && sbUser) {
+        cloudUpload(sbUser, f, f.name, f.type, "chat", "upload")
+          .then((row) => setMessages((m) => m.map((x) => (x.file && x.file.id === att.id ? { ...x, file: { ...x.file, path: row.path } } : x))))
+          .catch((e) => { console.error("Supabase:", e.message); addBot(`${f.name} is here in the chat, but it couldn't be stored in your account.`); });
+      }
+      setTyping(true);
+      setTimeout(() => {
+        addBot(`I've got ${att.name}. Press "Check this file" to run the checks, or "Save to dashboard" to keep it there.`);
+        setTyping(false);
+      }, 600);
+    };
+    reader.onerror = () => addBot("Sorry, I couldn't read that file. Try a code or text file.");
+    reader.readAsText(f);
+  }
+
+  async function saveFile(f) {
+    if (db && sbUser) {
+      try {
+        if (f.path) {
+          const { error } = await db.from("files").insert({ location: "dashboard", name: f.name, path: f.path, size: f.size, type: f.type || "", origin: "chat" });
+          if (error) throw error;
+        } else {
+          await cloudUpload(sbUser, new Blob([f.code], { type: "text/plain" }), f.name, "text/plain", "dashboard", "chat");
+        }
+        setSavedIds((s) => ({ ...s, [f.id]: true }));
+        addBot(`${f.name} was saved to your dashboard. It shows up under My files.`);
+      } catch (e) {
+        console.error("Supabase:", e.message);
+        addBot(`I couldn't save ${f.name} to your dashboard: ${e.message}`);
+      }
+      return;
+    }
+    if (sendToDashboard(f)) {
+      setSavedIds((s) => ({ ...s, [f.id]: true }));
+      addBot(`${f.name} was sent to your dashboard. It shows up under My files.`);
+    } else {
+      addBot("I couldn't reach your dashboard. Open this chat box from the dashboard and try again.");
+    }
   }
 
   function send() {
@@ -238,12 +363,6 @@ function App() {
     setMessages((m) => [...m, { id: Date.now(), from: "me", text }]);
     setInput("");
     setTyping(true);
-
-    // Save the student's message to the Supabase "messages" table
-    db.from("messages").insert({ text }).then(({ error }) => {
-      if (error) console.error("Supabase:", error.message);
-    });
-
     setTimeout(() => {
       addBot(getReply(text, file, checks, analysisDone));
       setTyping(false);
@@ -276,6 +395,13 @@ function App() {
                 <span className="name">{file.name}</span>
                 <span className="meta">{file.lines} lines · {(file.size / 1024).toFixed(1)} KB</span>
               </div>
+              {file.origin === "dashboard" ? (
+                <span className="meta">On your dashboard</span>
+              ) : (
+                <button className="link-btn" onClick={() => saveFile(file)} disabled={!!savedIds[file.id]}>
+                  {savedIds[file.id] ? "Saved to dashboard" : "Save to dashboard"}
+                </button>
+              )}
             </div>
 
             <div className="results">
@@ -333,13 +459,33 @@ function App() {
       <section className="chat">
         <div className="chat-head">
           <strong>AI chat</strong>
-          <span className="pill">{file ? `Using ${file.name}` : "No work submitted"}</span>
+          <span className="pill">
+            {file ? `Using ${file.name}` : "No work submitted"}
+            {sbUser ? " · synced" : sbUser === null ? " · not signed in" : ""}
+          </span>
         </div>
         <div className="messages">
           {messages.map((m) => (
             <div key={m.id} className={`msg ${m.from}`}>
               {m.from === "bot" && <span className="avatar">AI</span>}
-              <div className="bubble">{m.text}</div>
+              {m.file ? (
+                <div className="bubble attach">
+                  <span className="fname">📄 {m.file.name}</span>
+                  {m.file.fromDash && <span className="fmeta">Sent from your dashboard</span>}
+                  {m.file.id.startsWith("row-") && !m.file.fromDash && <span className="fmeta">Submitted homework</span>}
+                  <span className="fmeta">{m.file.lines} lines · {(m.file.size / 1024).toFixed(1)} KB</span>
+                  <span className="actions">
+                    <button className="link-btn" onClick={() => loadSubmission(m.file)}>Check this file</button>
+                    {!m.file.fromDash && (
+                      <button className="link-btn" onClick={() => saveFile(m.file)} disabled={!!savedIds[m.file.id]}>
+                        {savedIds[m.file.id] ? "Saved to dashboard" : "Save to dashboard"}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <div className="bubble">{m.text}</div>
+              )}
             </div>
           ))}
           {typing && (
@@ -351,6 +497,14 @@ function App() {
           <div ref={endRef} />
         </div>
         <div className="composer">
+          <label className="clip" title="Attach a file" aria-label="Attach a file">
+            📎
+            <input
+              type="file"
+              accept=".py,.js,.jsx,.ts,.java,.c,.cpp,.cs,.html,.css,.txt,.md,.json,.csv"
+              onChange={(e) => { attachFile(e.target.files[0]); e.target.value = ""; }}
+            />
+          </label>
           <textarea
             placeholder="Ask the AI anything…"
             value={input}
