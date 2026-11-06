@@ -2,7 +2,13 @@ import socket
 import json
 import threading
 import traceback
+import os
+from urllib.parse import urlparse
+
 from DataBaseHandler import DataBaseHandler
+from AIService import AIService, make_submission_fetcher
+from AgentInterface import Teacher
+
 #HOST = "127.0.0.1"
 #PORT = 8342
 hostname = socket.socket()
@@ -11,7 +17,12 @@ _decoder = json.JSONDecoder()
 
 test_response = {"Response Code":"200", "MESSAGE":{"METHOD": "message sent"}}
 
+# POST_ROUTES = {
+#     "startAIConversation": "start_coversation",
+#     "sendAIMessage":"send_message"
+# }
 
+# (INFO, BY) -> (DatabaseHandler method, key to read from MESSAGE["PARAMS"])
 GET_ROUTES = {
     ("userInfo", None):                  ("getUser",               "USERID"),
     ("AssignmentInfo", "CourseID"):      ("getAssignmentByCourse", "COURSEID"),
@@ -20,27 +31,30 @@ GET_ROUTES = {
     ("getCourseInfo", "CourseID"):       ("getCoursebyId",         "CourseID"),
     ("Enrollement", "Course"):           ("getEnrollmentByCourse", "CourseID"),
     ("Enrollement", "UserID"):           ("getEnrollmentByUser",   "userID"),
-    ("getAIConversation","ConvoID"):       ("getAiConversation", "")
 }
 
 
-SINGLE_ITEM = {"GetUser", "getCoursebyId", "getAssignment"}
+SINGLE_ITEM = {"getUser", "getCoursebyId", "getAssignment"}
 
-NOT_IMPLEMENTED_INFO = {"reportInfo", "getAiConversation"}
+NOT_IMPLEMENTED_INFO = {"reportInfo"}
 class Server():
     def __init__(self):
         self.HOST = "127.0.0.1"
         self.PORT = 8342
-        self.hostname = socket.socket()
+        #self.hostname = socket.socket()
         self.server_socket = None
         self.handshakeMsg = {"Response Code":"200", "MESSAGE":{"HANDSHAKE": "True"}}
         self.database = DataBaseHandler()
+
+        supabase_host = urlparse(os.environ.get("SUPABASE_URL", "")).hostname
+        self.ai = AIService(self.database, fetch_text=make_submission_fetcher(supabase_host))
 
 
     ##this function is called and starts up the server
     def start(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if os.name != "nt":
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         print(f"Socket created on {self.HOST}:{self.PORT}")
         try:
             self.server_socket.bind((self.HOST, self.PORT))
@@ -106,9 +120,36 @@ class Server():
         if method == "GET":
             return self.handle_get(message, data)
         if method == "POST":
-            return self.error("501", "POST not implemented yet")
-
+            return self.handle_post(message, data)
         return self.error("400", f"Uknown or missing METHOD: {method!r}", data)
+
+    @staticmethod
+    def int_params(params, *keys):
+        try: 
+            return tuple(int(params[k]) for k in keys)
+        except (KeyError, ValueError, TypeError):
+            return None
+        
+    def handle_post(self, message, original):
+        info = message.get("INFO")
+        params = message.get("PARAMS")
+
+        if not isinstance(params, dict):
+            return self.error("400", "Missing PARAMS", original)
+        ##Server parses request AI is in AI service
+        if info == "startAIConversation":
+            ids = self.int_params(params, "USERID","SUBMISSIONID")
+            #text = params.get("TEXT")
+            if ids is None:
+                return self.error("400", "PARAS needs integer USER and SUBMISSIONID", original)
+            return self.ai.send_message(ids[0], ids[1])
+
+        if info == "sendAIMessage":
+            ids = self.int_params(params, "USERID", "CONVOID")
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID and CONVOID", original)
+            return self.ai.send_message(ids[0], ids[1], params.get('TEXT'))
+        return self.error("400", f"Unknown POST request:{info!r}", original)
 
 
     def handle_get(self, message, original):
@@ -139,7 +180,7 @@ class Server():
             result = getattr(self.database,db_method)(the_id)
         except Exception as e:
             traceback.print_exc()
-            return self.error("500", f"Database error in {db_method}: {e}")
+            return self.error("500", f"Database error in {db_method}: {e}", original)
 
         if result is None or (db_method in SINGLE_ITEM and result == []) :
             return self.error("404", "Not found", original)
@@ -183,119 +224,10 @@ class Server():
 
         print(f"Closed {client_addr}")
 
-
-                ## this code is now redundant saving it for future reference. I try not to delete old code.
-                # raw = client_socket.recv(1024)
-                # if not raw:
-                #     break
-                # try:
-                #     data = json.loads(raw.decode("utf-8"))
-                # except json.JSONDecodeError as e:
-                #     reply = {"Response Code": "400", "MESSAGE": {"error":f"Invalid JSON: {e}"}}
-                #     client_socket.sendall(json.dumps(reply).encode("utf-8"))
-                #     continue
-
-                # if not data: 
-                #     break
-                # try: 
-                #     #message here should be in the format = {"Response Code":"200", "MESSAGE":{"METHOD": "GET", "INFO": nameofInforequest}}
-                #     if data["MESSAGE"]["METHOD"] == "GET":
-                #         if data["MESSAGE"]["INFO"] == "userInfo":
-                #             print("received userinfo request")
-                #             try: 
-                #                 user_id_raw = data["MESSAGE"]["INFO"]["USERID"]
-                #                 response = self.database.getUser(int(user_id_raw))
-                #             except ValueError:
-                #                 print(f"ERROR in /getUser: {e}")
-                #                 response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #             finally:
-                #                 self.emit(response,client_socket, client_addr )
-
-                #         elif data["MESSAGE"]["INFO"] == "AssignmentInfo":
-                #             if data["MESSAGE"]["BY"] == "CourseID":
-                #                 try:
-                #                     print("Getting AssignmentInfo by CourseID")
-                #                     course_id_raw = data["MESSAGE"]["INFO"]["COURSEID"]
-                #                     response = self.database.getAssignmentByCourse(int(course_id_raw))
-                #                 except ValueError as e:
-                #                     print(f"ERROR in get assignment by course: {e}")
-                #                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #                 finally:
-                #                     self.emit(response, client_socket, client_addr)
-                #             elif data["MESSAGE"]["BY"] == "AssignmentId":
-                #                 try:
-                #                     print("Getting AssignmentInfo by AssignmetID")
-                #                     Assignment_id_raw = data["MESSAGE"]["INFO"]["ASSIGNMENTID"]
-                #                     response = self.database.getAssignment(int(Assignment_id_raw))
-                #                 except ValueError as e:
-                #                     print(f"ERROR in /getAssignment by ID: {e}")
-                #                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #                 finally:
-                #                     self.emit(response, client_socket, client_addr)
-                #         elif data["MESSAGE"]["INFO"] == "getCourseInfo":
-                #             if data["MESSAGE"]["BY"] == "teacherID":
-                #                 try:
-                #                     print("Getting Course info By teacherID")
-                #                     teacher_Id_Raw = data["MESSAGE"]["INFO"]["teacherID"]
-                #                     response = self.database.getCourseByTeacher(int(teacher_Id_Raw))
-                #                 except ValueError as e:
-                #                     print(f"ERROR in get course by teacher id: {e}")
-                #                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-
-                #                 finally:
-                #                     self.emit(response, client_socket, client_addr)
-                                
-                #             elif data["MESSAGE"]["INFO"] == "CourseID":
-                #                 try: 
-                #                     print("Getting Course info by teacherID")
-                #                     course_id_raw = data["MESSAGE"]["INFO"]["CourseID"]
-                #                     response = self.database.getCoursebyId(int(course_id_raw))
-                #                 except ValueError as e: 
-                #                     print(f"ERROR in get course by course id: {e}")
-                #                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #                 finally:
-                #                     self.emit(response, client_socket, client_addr)
-                #         elif data["MESSAGE"]["INFO"] == "reportInfo":
-                #             pass
-                #         elif data["MESSAGE"]["INFO"] == "Enrollement":
-                #             if data["MESSAGE"]["BY"] == "Course":
-                #                 try: 
-                #                     print("getting Enrollment info by the course ID")
-                #                     course_id_raw = data["MESSAGE"]["INFO"]["CourseID"]
-                #                     response = self.database.getEnrollmentByCourse(int(course_id_raw))
-                #                 except ValueError as e:
-                #                     print(f"ERROR in get enrollement by course id: {e}")
-                #                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #                 finally:
-                #                     self.emit(response, client_socket, client_socket)
-
-                #             elif data["MESSAGE"]["BY"] == "UserID":
-                #                 try: 
-                #                     print("getting Enrollment info by the user id")
-                #                     user_id_raw = data["MESSAGE"]["INFO"]["userID"]
-                #                     response = self.database.getEnrollmentByUser(int(user_id_raw))
-                #                 except ValueError as e:
-                #                     print(f"ERROR in get enrollment by course id: {e}")
-                #                     response = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #                 finally:
-                #                     self.emit(response, client_socket, client_socket) 
-                #         elif data["MESSAGE"]["INFO"] == "getAiConversation":
-                #             pass
-                #         else:
-                #             reply = {"Response Code":"400", "MESSAGE":{"ERROR": "Invalid Get Request", "original Message": data}}
-                #             self.emit(reply, client_socket, client_addr, client_addr)
-
-                #     elif data["MESSAGE"]["METHOD"] == "POST":
-                #         pass
-
-                # except Exception as e:
-                #     #later send a 500 error code to client
-                #     print(f"Error receiving message: {e}")
         
 def main():
     server = Server()
     server.start()
-
 
 if __name__ == "__main__":
     main()

@@ -1,10 +1,10 @@
 {
-  "teacher": 10,
-  "student_a": 11,
-  "student_b": 12,
-  "course": 4,
+  "teacher": 19,
+  "student_a": 20,
+  "student_b": 21,
+  "course": 7,
   "enrolled": true,
-  "assignment": 4,
-  "submission": 4,
-  "ai_conversation": 1
+  "assignment": 7,
+  "submission": 7,
+  "ai_conversation": 7
 }

@@ -66,7 +66,10 @@ class DataBaseHandler:
     def _upsert(self, table, row):
         response = self.supabase.table(table).upsert([row]).execute()
         return response.data 
-    
+
+    @staticmethod
+    def one(rows):
+        return rows[0] if rows else None
 ## Getting Functions
     def getUser(self, UserID):
         return self._select(USER, USER_ID, UserID)
@@ -137,7 +140,9 @@ class DataBaseHandler:
         #     data = temp.data if hasattr(temp, 'data') else temp                       
         # except Exception as e:
         #     return {"Error": f"getAssignment DBH Error: {e}"}
-
+    def getSubmission(self, SubmissionID):
+        return self._select(SUBMISSION, SUB_ID, SubmissionID)
+    
     #get AI_Conversation
     def getAiConversation(self,aiConvoID):
         return self._select(AI_CONVOS, AI_CONVO_ID, aiConvoID)
@@ -173,3 +178,18 @@ class DataBaseHandler:
         #     return {"data": response.data}
         # except Exception as e:
         #     return {"error": f"create Course DBH error :{e}"}
+    
+    def createAIConversation(self, id, history, tokensUsed):
+        response = self.supabase.table(AI_CONVOS).insert([{
+            AI_CONVO_ID: id,
+            AI_CONVO_RESPONSES: history ,
+            AI_CONVO_TOKENS_USED: tokensUsed, 
+        }]).execute()
+        return response.data
+
+    def updateAIConversation(self, convoId, history, tokensUsed):
+        response = self.supabase.table(AI_CONVO).update({
+            AI_CONVO_RESPONSES:history,
+            AI_CONVO_TOKENS_USED: tokensUsed
+        }).eq(AI_CONVO_ID, convoId).execute()
+        return response.data

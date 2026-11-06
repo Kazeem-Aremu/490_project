@@ -104,7 +104,7 @@ def seed():
         print(f"submission     {ids['submission']}")
 
         convo = insert(db, AI_CONVOS, [{
-            AI_CONVO_SUBMISSION: ids["submission"],
+            AI_CONVO_ID: ids["submission"],
             AI_CONVO_RESPONSES: "TEST AI feedback: good structure, add comments.",
             AI_CONVO_TOKENS_USED: 123,
             AI_CONVO_EVAL_SCORE: 8,
