@@ -3,6 +3,9 @@ import json
 import threading
 import traceback
 from DataBaseHandler import DataBaseHandler
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Router"))
+from router_endpoint import handle_route_submission
 #HOST = "127.0.0.1"
 #PORT = 8342
 hostname = socket.socket()
@@ -106,6 +109,8 @@ class Server():
         if method == "GET":
             return self.handle_get(message, data)
         if method == "POST":
+            if message.get("INFO") == "routeSubmission":
+                return handle_route_submission(data)
             return self.error("501", "POST not implemented yet")
 
         return self.error("400", f"Uknown or missing METHOD: {method!r}", data)
