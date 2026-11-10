@@ -1,67 +1,60 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Understanding Review Prototype</title>
 <style>
-/* Layout: left rail navigation + content pane; collapses to a top strip on phones. Palette: cool slate, teal accent, semantic green/red/amber/blue for status only. */
+/* Layout: light analytics look (UMES maroon + cream), pill nav under the topbar, rounded white cards. */
 :root{
-  --bg:#f3f5f8; --panel:#ffffff; --fg:#1a2230; --muted:#5d6877; --line:#d8dee6; --rail:#e9edf2;
-  --accent:#0b6b73; --accent-fg:#ffffff; --accent-soft:#dcefef;
-  --ok:#1d6b3a; --ok-soft:#dff1e4; --bad:#a32a2a; --bad-soft:#f7e0e0; --warn:#85570a; --warn-soft:#faedd0; --info:#1f4f9a; --info-soft:#e0e9f8; --mute-soft:#e6eaef;
-  --code-bg:#f0f3f7;
-  --font-body:'IBM Plex Sans',system-ui,sans-serif; --font-head:'IBM Plex Sans Condensed','IBM Plex Sans',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --bg:#f1efec; --panel:#ffffff; --fg:#1d1a18; --muted:#6b655f; --line:#e7e3de; --rail:#e9e6e2;
+  --accent:#7a1530; --accent-fg:#ffffff; --accent-soft:#f5e8ec;
+  --gold:#d9a42b;
+  --ok:#166534; --ok-soft:#e4f3e7; --bad:#a3195f; --bad-soft:#fdeef5; --warn:#6b4300; --warn-soft:#f6e7c8; --info:#1a458a; --info-soft:#eaf0fb; --mute-soft:#ebe8e9;
+  --code-bg:#f6f4f1;
+  --font-body:'Inter',system-ui,sans-serif; --font-head:'Inter',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#10151c; --panel:#18202a; --fg:#e5e9ef; --muted:#9aa5b4; --line:#2a3441; --rail:#141b24;
-  --accent:#5cc4cc; --accent-fg:#06262a; --accent-soft:#16363a;
-  --ok:#7fd49a; --ok-soft:#183423; --bad:#f19a9a; --bad-soft:#3d1d1d; --warn:#e8b95a; --warn-soft:#3a2f14; --info:#8db6f2; --info-soft:#1b2b45; --mute-soft:#253040;
-  --code-bg:#111821; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#10151c; --panel:#18202a; --fg:#e5e9ef; --muted:#9aa5b4; --line:#2a3441; --rail:#141b24;
-  --accent:#5cc4cc; --accent-fg:#06262a; --accent-soft:#16363a;
-  --ok:#7fd49a; --ok-soft:#183423; --bad:#f19a9a; --bad-soft:#3d1d1d; --warn:#e8b95a; --warn-soft:#3a2f14; --info:#8db6f2; --info-soft:#1b2b45; --mute-soft:#253040;
-  --code-bg:#111821; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14.5px;line-height:1.55;padding:0}
-h1,h2,h3{font-family:var(--font-head);margin:0;text-wrap:balance}
-h1{font-size:1.6rem;line-height:1.2} h2{font-size:1.25rem} h3{font-size:1rem}
+h1,h2,h3{font-family:var(--font-head);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.9rem;line-height:1.15;font-weight:700} h2{font-size:1.25rem;font-weight:700} h3{font-size:1rem;font-weight:700}
 p{margin:0 0 10px;max-width:70ch}
 button{font:inherit;cursor:pointer}
 .mono{font-family:var(--font-mono);font-size:.85em}
 .muted{color:var(--muted)}
 .banner{background:var(--warn-soft);color:var(--warn);padding:6px 16px;font-size:.8rem;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.banner button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:4px;padding:2px 10px;font-size:.78rem}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-.brand{font-family:var(--font-head);font-weight:700;font-size:1.05rem}
+.banner button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:99px;padding:2px 10px;font-size:.78rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;background:var(--bg);flex-wrap:wrap}
+.brand{font-family:var(--font-head);font-weight:800;font-size:1.05rem;display:flex;align-items:center;gap:10px}
+.brand::before{content:"U";width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
 .who{display:flex;gap:10px;align-items:center;font-size:.88rem;flex-wrap:wrap}
-.shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 100px)}
-.rail{background:var(--rail);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
-.rail button{text-align:left;background:transparent;border:0;border-radius:5px;padding:8px 10px;color:var(--fg);font-weight:500}
-.rail button:hover{background:var(--line)}
-.rail button.on{background:var(--accent);color:var(--accent-fg)}
-.main{padding:20px 20px 48px;min-width:0;max-width:1000px}
+.shell{display:block;min-height:calc(100vh - 100px);padding:0 20px}
+.rail{background:var(--rail);border-radius:99px;padding:4px;display:inline-flex;flex-direction:row;gap:2px;margin:4px 0 18px;flex-wrap:wrap}
+.rail button{text-align:left;background:transparent;border:0;border-radius:99px;padding:8px 18px;color:var(--muted);font-weight:600;font-size:.88rem}
+.rail button:hover{color:var(--fg)}
+.rail button.on{background:var(--fg);color:#fff}
+.main{padding:0 0 48px;min-width:0;max-width:1180px;margin:0 auto}
 .head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px;min-width:0}
-.card h3{margin-bottom:8px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px;min-width:0}
+.card h3{margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:14px}
 .grid .card{margin:0}
-.stat{font-family:var(--font-head);font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}
-.pill{display:inline-block;font-size:.74rem;font-weight:600;padding:1px 9px;border-radius:99px;white-space:nowrap}
+.stat{font-family:var(--font-head);font-size:2.4rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:.74rem;font-weight:700;padding:3px 11px;border-radius:99px;white-space:nowrap}
 .p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-info{background:var(--info-soft);color:var(--info)} .p-mute{background:var(--mute-soft);color:var(--muted)}
-.btn{background:var(--accent);color:var(--accent-fg);border:1px solid var(--accent);border-radius:5px;padding:7px 14px;font-weight:600}
-.btn:hover{filter:brightness(1.08)}
-.btn.sec{background:transparent;color:var(--accent)}
-.btn.sm{padding:3px 10px;font-size:.82rem}
+.btn{background:var(--accent);color:var(--accent-fg);border:1px solid var(--accent);border-radius:10px;padding:8px 16px;font-weight:700}
+.btn:hover{filter:brightness(1.1)}
+.btn.sec{background:#fff;color:var(--accent);border-color:var(--line)}
+.btn.sm{padding:4px 11px;font-size:.82rem;border-radius:8px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:.88rem}
-th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--line)}
 th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 tr.click{cursor:pointer} tr.click:hover{background:var(--accent-soft)}
-input,select,textarea{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:7px 9px;max-width:100%}
+input,select,textarea{font:inherit;color:var(--fg);background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-width:100%}
 textarea{width:100%;font-family:var(--font-mono);font-size:.85rem;line-height:1.45}
-label{display:block;font-size:.8rem;font-weight:600;margin:10px 0 4px}
-pre{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin:6px 0;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.45}
-.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:9px 12px;border-radius:0 5px 5px 0;margin:10px 0;max-width:78ch}
+label{display:block;font-size:.8rem;font-weight:700;margin:10px 0 4px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.45}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:9px 12px;border-radius:0 10px 10px 0;margin:10px 0;max-width:78ch}
 .note.warn{border-color:var(--warn);background:var(--warn-soft)}
 .note.bad{border-color:var(--bad);background:var(--bad-soft)}
 .note.ok{border-color:var(--ok);background:var(--ok-soft)}
@@ -70,9 +63,9 @@ pre{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;pad
 .tl li{padding:6px 0 6px 14px;border-left:2px solid var(--line);position:relative}
 .tl li::before{content:"";position:absolute;left:-5px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
 .tl .t{font-size:.76rem;color:var(--muted)}
-.bar{height:8px;background:var(--mute-soft);border-radius:4px;overflow:hidden}
+.bar{height:8px;background:var(--mute-soft);border-radius:99px;overflow:hidden}
 .bar>span{display:block;height:100%;background:var(--accent)}
-.toast{position:fixed;right:16px;bottom:16px;background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:6px;font-size:.88rem;z-index:20;max-width:80vw}
+.toast{position:fixed;right:16px;bottom:16px;background:var(--fg);color:#fff;padding:9px 14px;border-radius:10px;font-size:.88rem;z-index:20;max-width:80vw}
 .login{max-width:900px;margin:0 auto;padding:40px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;align-items:start}
 .login h1{font-size:2.1rem;margin-bottom:10px}
 .demoacct{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
@@ -82,14 +75,13 @@ pre{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;pad
 .kv dt{color:var(--muted)} .kv dd{margin:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:760px){
-  .shell{grid-template-columns:minmax(0,1fr)}
-  .rail{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
+  .rail{display:flex;overflow-x:auto;max-width:100%}
   .rail button{white-space:nowrap}
-  .main{padding:16px}
+  .shell{padding:0 12px}
   .kv{grid-template-columns:1fr}
 }
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
 <div id="app"></div>
 
@@ -196,10 +188,33 @@ function evaluate(code){
   const checks=asg.checks.map(c=>({id:c.id,ok:!!TESTS[c.id](code)}));
   return{checks,passed:checks.filter(c=>c.ok).length,total:checks.length,suite:'s1.2',diag:checks.filter(c=>!c.ok).map(c=>asg.checks.find(x=>x.id===c.id).diag),at:new Date()};
 }
+/* WS2 router v0.2 (JS port of Router/router.py, same rules, same 11 test cases).
+   The AI never decides correctness: only the instructor's checks do. */
+function routeDecision(o){
+  const w=[];
+  if(!o.uploadValid) return ['REJECTED','INVALID_UPLOAD',w];
+  if(o.errorStatus==='CRASH'||o.errorStatus==='SANDBOX_ERROR') return ['MANUAL_REVIEW','EVALUATOR_ERROR',w];
+  if(o.errorStatus==='PROHIBITED_ACTION') return ['MANUAL_REVIEW','PROHIBITED_ACTION',w];
+  if(!o.testSuiteOk||!o.testsTotal) return ['MANUAL_REVIEW','TEST_SUITE_MISSING',w];
+  if(o.compileStatus!=='SUCCESS') return ['FAIL','SYNTAX_ERROR',w];
+  if(o.errorStatus==='TIMEOUT') return ['FAIL','TIMEOUT',w];
+  if(o.errorStatus==='MEMORY_LIMIT') return ['FAIL','MEMORY_LIMIT',w];
+  if(o.errorStatus==='RUNTIME_EXCEPTION') return ['FAIL','RUNTIME_EXCEPTION',w];
+  if(o.testsPassed<o.threshold) return ['FAIL','WRONG_OUTPUT',w];
+  if((o.commentLines||0)<(o.minComments||0)) w.push('MISSING_COMMENTS');
+  return ['PASS',null,w];
+}
 function route(ev,asg){
-  if(!ev) return{d:'MANUAL REVIEW',why:'No evaluation evidence'};
-  const unmet=ev.checks.filter(c=>!c.ok&&asg.checks.find(x=>x.id===c.id).mandatory);
-  return unmet.length?{d:'FAIL',why:unmet.length+' mandatory check'+(unmet.length>1?'s':'')+' not met'}:{d:'PASS',why:'All mandatory checks met'};
+  if(!ev) return{d:'MANUAL REVIEW',why:'No evaluation evidence',code:'EVALUATOR_ERROR'};
+  const mand=asg.checks.filter(c=>c.mandatory);
+  const passedMand=ev.checks.filter(c=>c.ok&&asg.checks.find(x=>x.id===c.id).mandatory).length;
+  const r=routeDecision({uploadValid:true,compileStatus:'SUCCESS',errorStatus:null,
+    testsPassed:passedMand,testsTotal:mand.length,threshold:mand.length,testSuiteOk:true});
+  const unmet=mand.length-passedMand;
+  const why=r[0]==='PASS'?'All mandatory checks met'
+    :r[0]==='FAIL'?unmet+' mandatory check'+(unmet>1?'s':'')+' not met'
+    :'Needs a person to check ('+r[1]+')';
+  return{d:r[0].replace('_',' '),why,code:r[1]};
 }
 function addRoute(th,t){th.routing.push({at:new Date(),t});}
 function validateUpload(name,code){
@@ -235,7 +250,7 @@ function doSubmit(){
 function applyRouting(th,v,wasRevision){
   const asg=A2(),r=route(v.eval,asg);
   v.decision=r.d;
-  addRoute(th,'Evaluation complete: '+v.eval.passed+' of '+v.eval.total+' checks. Decision '+r.d+' ('+r.why+').');
+  addRoute(th,'Evaluation complete: '+v.eval.passed+' of '+v.eval.total+' checks. Decision '+r.d+' ('+r.why+'). Router v0.2.');
   if(r.d==='PASS'){
     if(!S.services.ai){th.status='manual';th.hold='The AI service was unavailable, so the Understanding Review could not start. Nothing was marked incorrect.';addRoute(th,'Path A could not start (AI service unavailable). Status: MANUAL REVIEW.');return;}
     addRoute(th,wasRevision?'Revised submission passed. Proceeding to Path A: Understanding Review.':'Routed to Path A: Understanding Review.');
