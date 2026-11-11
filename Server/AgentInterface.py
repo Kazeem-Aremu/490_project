@@ -18,7 +18,7 @@ If it looks sound, ask a few questions about how and why the code works, so that
 whether the student really understands code they say they wrote."""
 
 TUTOR_RULES = """
-ou are a patient, encouraging tutor helping a student with ONE assignment.
+You are a patient, encouraging tutor helping a student with ONE assignment.
  
 Rules:
 - Guide with questions, hints and small examples. Do not write the full solution or hand over

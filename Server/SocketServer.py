@@ -142,7 +142,7 @@ class Server():
             #text = params.get("TEXT")
             if ids is None:
                 return self.error("400", "PARAS needs integer USER and SUBMISSIONID", original)
-            return self.ai.send_message(ids[0], ids[1])
+            return self.ai.start_conversation(ids[0], ids[1])
 
         if info == "sendAIMessage":
             ids = self.int_params(params, "USERID", "CONVOID")
