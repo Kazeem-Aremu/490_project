@@ -1,13 +1,27 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "../../supabaseClient";
 
 function Login() {
   const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  function handleSubmit(event) {
-    event.preventDefault();
-    setMessage("Prototype only! Authentication will be added later.");
+  async function handleSubmit(event) {
+  event.preventDefault();
+  setMessage("");
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password,
+  });
+
+  if (error) {
+    setMessage(error.message);
+  } else {
+   setMessage("Login successful!");
   }
+}
 
   return (
     <>
@@ -17,12 +31,14 @@ function Login() {
       <form onSubmit={handleSubmit}>
         <div className="input-group">
           <label htmlFor="email">Email address</label>
-          <input id="email" type="email" placeholder="you@example.com" required />
+          <input id="email" type="email" placeholder="you@example.com"
+            value={email} onChange={(event) => setEmail(event.target.value)} required />
         </div>
 
         <div className="input-group">
           <label htmlFor="password">Password</label>
-          <input id="password" type="password" placeholder="Enter your password" required />
+          <input id="password" type="password" placeholder="Enter your password"
+            value={password} onChange={(event) => setPassword(event.target.value)} required />
         </div>
 
         <div className="form-options">

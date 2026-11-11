@@ -1,12 +1,24 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "../../supabaseClient";
 
 function ForgotPassword() {
   const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    setMessage("Prototype only! If an account exists for that email, a reset link will be sent once email is set up.");
+    setMessage("");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("If an account exists for that email, a reset link will be sent.");
+    }
   }
 
   return (
@@ -19,7 +31,8 @@ function ForgotPassword() {
       <form onSubmit={handleSubmit}>
         <div className="input-group">
           <label htmlFor="email">Email address</label>
-          <input id="email" type="email" placeholder="you@example.com" required />
+          <input id="email" type="email" placeholder="you@example.com"
+            value={email} onChange={(event) => setEmail(event.target.value)} required />
         </div>
 
         <button className="submit-button" type="submit">Send Reset Link</button>
