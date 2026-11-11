@@ -181,14 +181,13 @@ class DataBaseHandler:
     
     def createAIConversation(self, id, history, tokensUsed):
         response = self.supabase.table(AI_CONVOS).insert([{
-            AI_CONVO_ID: id,
             AI_CONVO_RESPONSES: history ,
             AI_CONVO_TOKENS_USED: tokensUsed, 
         }]).execute()
         return response.data
 
     def updateAIConversation(self, convoId, history, tokensUsed):
-        response = self.supabase.table(AI_CONVO).update({
+        response = self.supabase.table(AI_CONVOS).update({
             AI_CONVO_RESPONSES:history,
             AI_CONVO_TOKENS_USED: tokensUsed
         }).eq(AI_CONVO_ID, convoId).execute()

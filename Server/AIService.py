@@ -51,7 +51,7 @@ class AIService:
 
         if submission is None:
             return None, None, err("404", f"Submission {submission_id} not found")
-        if submission["Student_id"] != user_id:
+        if int(submission["Student_id"]) != user_id:
             return None, None, err("403", "this submission belongs to a different student ")
         assignment = db.one(db.getAssignment(submission["Assign_id"]))
         if assignment is None:
