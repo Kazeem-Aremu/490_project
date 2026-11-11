@@ -361,7 +361,7 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 | Nov 5–6 | AI tutor conversations (OpenAI), agent interface; Supabase connection fixes; AI chat page | Nyles Burton, Kazeem Aremu, Osaosemwen Osifo |
 | Nov 10 | Instructor dashboard restyle (UMES look), PR #1 merged | Ayo Omotola |
 | Nov 11 | Server bug fixes; React + TypeScript portal; WebSocket bridge with verified sign-in; submissions to Storage | Nyles Burton |
-| Nov 11 | Demo data removed; login → dashboard → chat flow; student/teacher sign-up; teacher class and roster management; assignment and rubric uploads read by the AI; dashboards in the redesign layout; `createTestUser.py`; this document | Nyles Burton *(uncommitted at time of writing)* |
+| Nov 11 | Demo data removed; login → dashboard → chat flow; student/teacher sign-up; teacher class and roster management; assignment and rubric uploads read by the AI; dashboards in the redesign layout; `createTestUser.py`; this document | Nyles Burton (branch `portal-dashboard-ai-tutor`, not yet merged into `main`) |
 
 ### 10.3 Demo script (about 5 minutes)
 
@@ -434,6 +434,7 @@ Add new entries at the top. Keep each one to one or two lines and link to the fi
 
 | Date | Change |
 |---|---|
+| 2026-11-11 | All of the work below committed on branch `portal-dashboard-ai-tutor` (`main` unchanged).
 | 2026-11-11 | Created this document. Added `Server/createTestUser.py` (confirmed accounts without email). |
 | 2026-11-11 | Dashboards rebuilt in the instructor-redesign layout (top bar, pill tabs, stat cards). Teacher tabs: Overview / Classes and Students / Assignment Setup. |
 | 2026-11-11 | Assignment uploads: `AssignmentService.py`, `createAssignment`, `assignmentFile`; PDF/DOCX text sent to the tutor; WebSocket message limit raised to 32 MB. |
