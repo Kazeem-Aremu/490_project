@@ -17,15 +17,17 @@ def ok(message):
 def err(code, text):
     return {"Response Code": code, "MESSAGE":{"ERROR":text}}
 
-def make_submission_fetcher(allowed_host):
+def make_submission_fetcher(allowed_host, headers=None):
     ##returns fetch link/file text or nothing if it cant be read.
+    ##headers (e.g. the Supabase key for private Storage files) are only ever sent to allowed_host
     def fetch (link):
         parsed = urlparse(link or "")
         if parsed.scheme != "https" or not allowed_host or parsed.hostname != allowed_host:
             return None
 
         try:
-            with urllib.request.urlopen(link, timeout=10) as resp:
+            request = urllib.request.Request(link, headers=headers or {})
+            with urllib.request.urlopen(request, timeout=10) as resp:
                 raw = resp.read(MAX_FILE_BYTES + 1)
         except Exception:
             traceback.print_exc()
@@ -35,9 +37,11 @@ def make_submission_fetcher(allowed_host):
 
 
 class AIService:
-    def __init__(self,database,fetch_text = None):
+    def __init__(self,database,fetch_text = None, assignment_texts = None):
         self.db:DataBaseHandler = database
         self.fetch_text = fetch_text
+        ## (assignment) -> (assignment sheet text, rubric text); AssignmentService.assignment_texts
+        self.assignment_texts = assignment_texts
         self._locks = {}
         self._locks_guard = threading.Lock()
 
@@ -61,6 +65,15 @@ class AIService:
             return None, None, err("403", "Student is not enrolled in this course")
 
         return submission, assignment, None
+
+    def _system_prompt(self, assignment):
+        texts = (None, None)
+        if self.assignment_texts is not None:
+            try:
+                texts = self.assignment_texts(assignment)
+            except Exception:
+                traceback.print_exc()
+        return build_system_prompt(assignment, *texts)
 
     def _read_submission(self, submission):
         if self.fetch_text is None:
@@ -90,7 +103,7 @@ class AIService:
 
             kickoff = {"role":"user", "hidden":True, "content":build_kickoff(self._read_submission(submission))
                        }
-            teacher = Teacher(build_system_prompt(assignment), [kickoff])
+            teacher = Teacher(self._system_prompt(assignment), [kickoff])
             try:
                 teacher.respond()
             except Exception:
@@ -121,7 +134,7 @@ class AIService:
                 return err("429", "This conversation has reached its limit")
 
 
-            teacher = Teacher(build_system_prompt(assignment), load_history(convo.get("Responses")))
+            teacher = Teacher(self._system_prompt(assignment), load_history(convo.get("Responses")))
 
             try:
                 reply = teacher.say(text)

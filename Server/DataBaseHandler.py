@@ -179,8 +179,20 @@ class DataBaseHandler:
         # except Exception as e:
         #     return {"error": f"create Course DBH error :{e}"}
     
+    def createSubmission(self, assignmentId, studentId, submissionLink):
+        ## insert (not upsert) so a new submission can never overwrite an old one
+        response = self.supabase.table(SUBMISSION).insert([{
+            SUB_ASSIGN_ID: assignmentId,
+            SUB_STUDENT_ID: studentId,
+            SUB_SUBMISSION_LINK: submissionLink,
+        }]).execute()
+        return response.data
+
     def createAIConversation(self, id, history, tokensUsed):
         response = self.supabase.table(AI_CONVOS).insert([{
+            ## the conversation shares its id with the submission (CONVOID == SUBMISSIONID),
+            ## same as databbaseSeeder.py, so getAiConversation(submission_id) can find it again
+            AI_CONVO_ID: id,
             AI_CONVO_RESPONSES: history ,
             AI_CONVO_TOKENS_USED: tokensUsed, 
         }]).execute()

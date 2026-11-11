@@ -1,0 +1,21 @@
+.site-nav {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 8px 16px; background: #3f1420; color: #fff;
+  font: 500 13px/1.2 Inter, system-ui, sans-serif; letter-spacing: normal;
+}
+.site-nav-logo {
+  width: 24px; height: 24px; border-radius: 6px; background: #fff; color: #5a1f2e;
+  display: inline-grid; place-items: center; font-weight: 800; margin-right: 8px;
+}
+.site-nav a { color: rgba(255, 255, 255, .75); text-decoration: none; padding: 6px 10px; border-radius: 99px; }
+.site-nav a:hover { color: #fff; }
+.site-nav a.active { background: rgba(255, 255, 255, .16); color: #fff; }
+.site-nav-spacer { flex: 1; }
+.site-nav-dot { width: 8px; height: 8px; border-radius: 50%; background: #d9a42b; }
+.site-nav-dot.on { background: #6fcf8e; }
+.site-nav-who { color: rgba(255, 255, 255, .85); margin: 0 8px 0 4px; }
+.site-nav button {
+  font: inherit; color: #fff; background: transparent; border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: 99px; padding: 4px 12px; cursor: pointer;
+}
+.site-nav button:hover { border-color: #fff; }

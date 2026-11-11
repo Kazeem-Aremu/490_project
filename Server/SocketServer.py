@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 from DataBaseHandler import DataBaseHandler
 from AIService import AIService, make_submission_fetcher
 from AgentInterface import Teacher
+from SubmissionService import SubmissionService
+from TeacherService import TeacherService
+from AssignmentService import AssignmentService
 
 #HOST = "127.0.0.1"
 #PORT = 8342
@@ -46,8 +49,17 @@ class Server():
         self.handshakeMsg = {"Response Code":"200", "MESSAGE":{"HANDSHAKE": "True"}}
         self.database = DataBaseHandler()
 
-        supabase_host = urlparse(os.environ.get("SUPABASE_URL", "")).hostname
-        self.ai = AIService(self.database, fetch_text=make_submission_fetcher(supabase_host))
+        supabase_url = os.environ.get("SUPABASE_URL", "")
+        supabase_host = urlparse(supabase_url).hostname
+        ## lets the AI tutor read submission files kept in private Supabase Storage
+        storage_key = os.environ.get("SUPABASE_SECRET_KEY", "")
+        storage_headers = {"apikey": storage_key, "Authorization": f"Bearer {storage_key}"}
+        self.submissions = SubmissionService(self.database, supabase_url)
+        self.teachers = TeacherService(self.database)
+        self.assignments = AssignmentService(self.database, supabase_url, self.teachers)
+        ## the tutor also gets the text of the teacher's assignment sheet and rubric
+        self.ai = AIService(self.database, fetch_text=make_submission_fetcher(supabase_host, storage_headers),
+                            assignment_texts=self.assignments.assignment_texts)
 
 
     ##this function is called and starts up the server
@@ -149,6 +161,41 @@ class Server():
             if ids is None:
                 return self.error("400", "PARAMS needs integer USERID and CONVOID", original)
             return self.ai.send_message(ids[0], ids[1], params.get('TEXT'))
+
+        if info == "createSubmission":
+            ids = self.int_params(params, "USERID", "ASSIGNMENTID")
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID and ASSIGNMENTID", original)
+            return self.submissions.create_submission(ids[0], ids[1], params.get("NAME"), params.get("CODE"))
+
+        ##Teacher dashboard: new assignment with optional PDF/DOCX assignment sheet and rubric
+        if info == "createAssignment":
+            ids = self.int_params(params, "USERID", "COURSEID")
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID and COURSEID", original)
+            return self.assignments.create_assignment(ids[0], ids[1], params.get("DESCRIPTION"), params.get("FILES"))
+
+        ##Both dashboards: a short-lived link to an assignment's file (KIND "assignment" or "rubric")
+        if info == "assignmentFile":
+            ids = self.int_params(params, "USERID", "ASSIGNMENTID")
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID and ASSIGNMENTID", original)
+            return self.assignments.file_link(ids[0], ids[1], params.get("KIND"))
+
+        ##Teacher dashboard: create a class owned by the signed-in teacher
+        if info == "createCourse":
+            ids = self.int_params(params, "USERID")
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID and a NAME", original)
+            return self.teachers.create_course(ids[0], params.get("NAME"))
+
+        ##Teacher dashboard: add / remove a student from one of the teacher's classes
+        if info in ("enrollStudent", "unenrollStudent"):
+            ids = self.int_params(params, "USERID", "COURSEID", "STUDENTID")
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID, COURSEID and STUDENTID", original)
+            action = self.teachers.enroll if info == "enrollStudent" else self.teachers.unenroll
+            return action(*ids)
         return self.error("400", f"Unknown POST request:{info!r}", original)
 
 
@@ -158,6 +205,14 @@ class Server():
 
         if info in NOT_IMPLEMENTED_INFO:
             return self.error("501", f"{info} not implemented yet", original)
+
+        ##Teacher dashboard: the students a teacher can add to a class
+        if info == "StudentList":
+            params = message.get("PARAMS")
+            ids = self.int_params(params, "USERID") if isinstance(params, dict) else None
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID", original)
+            return self.teachers.list_students(ids[0])
 
         route = GET_ROUTES.get((info, by)) or GET_ROUTES.get((info, None))
 
@@ -227,6 +282,10 @@ class Server():
         
 def main():
     server = Server()
+    ## browsers cannot open raw TCP sockets, so the student portal talks to this same
+    ## server through a WebSocket on port 8343 (see WebSocketServer.py)
+    from WebSocketServer import start_in_background
+    start_in_background(server)
     server.start()
 
 if __name__ == "__main__":

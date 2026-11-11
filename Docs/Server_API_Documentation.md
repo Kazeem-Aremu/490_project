@@ -5,8 +5,8 @@
 | **Server file** | `Server/SocketServer.py` (class `Server`) |
 | **AI layer** | `Server/AIService.py`, `Server/AgentInterface.py` (OpenAI, temporary) |
 | **Database layer** | `Server/DataBaseHandler.py` (Supabase / PostgreSQL) |
-| **Transport** | TCP socket, one UTF-8 JSON object per message, each terminated by `\n` |
-| **Default address** | `127.0.0.1:8342` |
+| **Transport** | TCP socket, one UTF-8 JSON object per message, each terminated by `\n`; plus a WebSocket for browsers (`Server/WebSocketServer.py`, Section 6.1) |
+| **Default address** | `127.0.0.1:8342` (TCP), `ws://127.0.0.1:8343` (WebSocket) |
 | **Test client** | `test_client.py` (see Section 10) |
 | **Doc status** | Draft v0.2 (November 2026) |
 
@@ -46,8 +46,8 @@ DataBaseHandler.py ──► Supabase      AIService.py ──► AgentInterface
    SUPABASE_SECRET_KEY=<service role key>
    OPEN_AI_KEY=<OpenAI API key>
    ```
-2. Install dependencies: `pip install supabase python-dotenv openai`
-3. Start the server: `py Server/SocketServer.py`
+2. Install dependencies: `pip install supabase python-dotenv openai websockets pypdf python-docx`
+3. Start the server: `py Server/SocketServer.py` (starts the TCP server on 8342 **and** the browser WebSocket on 8343)
 4. Run clients from a **second terminal**. The server must stay running.
 
 `HOST` is `127.0.0.1`, so only programs on the same machine can connect. To accept other machines, bind to `0.0.0.0` and open port 8342 in the firewall. On non-Windows systems the server sets `SO_REUSEADDR`, so it can be restarted immediately on the same port.
@@ -220,6 +220,7 @@ A conversation belongs to one **submission**, and its ID is the submission ID: `
 |---|---|---|
 | `startAIConversation` | `USERID`, `SUBMISSIONID` (integers) | `{"CONVOID", "RESUMED", "MESSAGES"}` |
 | `sendAIMessage` | `USERID`, `CONVOID` (integers), `TEXT` (string) | `{"CONVOID", "REPLY"}` |
+| `createSubmission` | `USERID`, `ASSIGNMENTID` (integers), `NAME`, `CODE` (strings) | `{"SUBMISSIONID", "ASSIGNMENTID", "NAME"}` (Section 5.4) |
 
 Any other POST `INFO` returns `400`.
 
@@ -292,6 +293,73 @@ On the first turn it looks for errors in the submission and points to where to l
 - History is stored as a JSON array in the `AI_Conversations` responses column. Token usage accumulates in `Tokens_used`.
 - Requests for the same conversation are serialized with a per-submission lock. Two simultaneous `startAIConversation` calls therefore create only one conversation, and simultaneous messages cannot overwrite each other's history.
 - The full history is resent to the model on every message, so each message costs more tokens than the last. The 50,000-token cap is what bounds this.
+
+### 5.4 POST: createSubmission (UploadSubmission)
+
+Used by the Homework Check chat box to hand a file to the AI tutor. The client sends the file **text** (at most 200,000 bytes, the same limit the tutor reads). `SubmissionService.py` then:
+
+1. checks the assignment exists (`404`) and `USERID` is enrolled in its course (`403`);
+2. uploads the text to the private Storage bucket **`submissions`** at `<USERID>/<ASSIGNMENTID>/<timestamp>-<name>` (the bucket is created on first use);
+3. inserts a `Submission` row whose `Submission_link` is `https://<supabase host>/storage/v1/object/authenticated/submissions/<path>`.
+
+```json
+{"MESSAGE": {"METHOD": "POST", "INFO": "createSubmission",
+             "PARAMS": {"USERID": 20, "ASSIGNMENTID": 7, "NAME": "sum_even.py", "CODE": "def sum_even(nums): ..."}}}
+```
+```json
+{"Response Code": "200", "MESSAGE": {"SUBMISSIONID": 12, "ASSIGNMENTID": 7, "NAME": "sum_even.py"}}
+```
+
+Then call `startAIConversation` with that `SUBMISSIONID`. Because the link is on the Supabase host, `make_submission_fetcher` reads it, sending the service key **only** to that host.
+
+### 5.5 Teacher dashboard: createCourse, StudentList, enrollStudent, unenrollStudent
+
+Used by the portal's teacher dashboard (`TeacherService.py`). Each one checks that `USERID` is a `teacher` (`403` otherwise). The enroll calls also check that the teacher owns `COURSEID` (`403`) and that `STUDENTID` is a `student` (`404`). Over the WebSocket, `USERID` is filled in from the signed-in session.
+
+```json
+{"MESSAGE": {"METHOD": "GET", "INFO": "StudentList", "PARAMS": {"USERID": 30}}}
+```
+```json
+{"Response Code": "200", "MESSAGE": [{"id": 20, "NAME": "TEST Student A"}, {"id": 21, "NAME": "TEST Student B"}]}
+```
+```json
+{"MESSAGE": {"METHOD": "POST", "INFO": "enrollStudent", "PARAMS": {"USERID": 30, "COURSEID": 9, "STUDENTID": 20}}}
+```
+```json
+{"Response Code": "200", "MESSAGE": {"COURSEID": 9, "STUDENTID": 20}}
+```
+
+`createCourse` makes a class owned by the calling teacher. `NAME` must be 1 to 120 characters.
+
+```json
+{"MESSAGE": {"METHOD": "POST", "INFO": "createCourse", "PARAMS": {"USERID": 30, "NAME": "CSDP 222: Intro to Programming"}}}
+```
+```json
+{"Response Code": "200", "MESSAGE": {"COURSEID": 10, "NAME": "CSDP 222: Intro to Programming"}}
+```
+
+`enrollStudent` does nothing if the student is already enrolled (the reply has `"ALREADY": true`). `unenrollStudent` takes the same PARAMS and removes the `Enrollment` row.
+
+### 5.6 Assignment files: createAssignment, assignmentFile
+
+`AssignmentService.py`. A teacher who owns `COURSEID` creates an assignment with a `DESCRIPTION` (1 to 4000 characters) and, optionally, an assignment sheet and a rubric. Each file is a **PDF or DOCX** of up to 10 MB, sent base64 encoded. (The WebSocket accepts messages up to 32 MB for this.)
+
+```json
+{"MESSAGE": {"METHOD": "POST", "INFO": "createAssignment",
+             "PARAMS": {"USERID": 30, "COURSEID": 9, "DESCRIPTION": "Homework 2: Loops",
+                        "FILES": {"assignment": {"NAME": "hw2.pdf", "DATA": "<base64>"},
+                                  "rubric":     {"NAME": "rubric.docx", "DATA": "<base64>"}}}}}
+```
+```json
+{"Response Code": "200", "MESSAGE": {"ASSIGNMENTID": 12, "COURSEID": 9, "DESCRIPTION": "Homework 2: Loops",
+                                      "HASFILE": true, "HASRUBRIC": true, "NOTEXT": []}}
+```
+
+- Files go to the private Storage bucket **`assignments`** at `<COURSEID>/<timestamp>-<kind>-<name>`. The bucket is created on first use. Their links are saved in `resource_link` and `rubrik_link` (`""` when no file was sent).
+- The text is extracted with `pypdf` / `python-docx` and saved next to the file as `<path>.txt`. `NOTEXT` lists the files with no readable text, such as scanned PDFs.
+- **AI tutor:** on every turn, `AIService` adds the assignment sheet text and the rubric text to the system prompt, each capped at 15,000 characters and fenced as data. The tutor uses the rubric to guide the student but is told never to give a grade.
+
+`assignmentFile` (`PARAMS: {"USERID", "ASSIGNMENTID", "KIND": "assignment" | "rubric"}`) returns `{"URL", "NAME"}`, a signed link valid for 5 minutes. Only students enrolled in the course and the course's teacher get one (`403` otherwise). It returns `404` if that file was never uploaded.
 
 ---
 
@@ -378,8 +446,29 @@ if __name__ == "__main__":
 - Check `Response Code`. Only `"200"` is success; everything else has `MESSAGE.ERROR`.
 - Keep the connection open and reuse it. There is no need to reconnect for each request.
 
+### 6.1 Browser clients: WebSocket on 8343
+
+Browsers cannot open raw TCP sockets, so `WebSocketServer.py` listens on `ws://127.0.0.1:8343` and passes each request to the **same** `Server.handle_Requests`. The student portal uses it through `student-portal/src/contexts/ClientContextProvider.tsx`. Differences from TCP:
+
+| | TCP (8342) | WebSocket (8343) |
+|---|---|---|
+| Framing | one JSON object + `\n` | one JSON object per WebSocket message |
+| Handshake | server sends it; client **must** ack | server sends it; no ack needed (an ack is ignored and never swallows a request) |
+| Matching replies | in request order | add `"REQUESTID": <number>` at the top level; it is echoed on the reply. Requests run in parallel, so replies can arrive out of order |
+| Identity | `USERID` trusted as sent | must send `login` first; `USERID` is then **filled in by the server** for `startAIConversation`, `sendAIMessage`, `createSubmission` |
+| Before login | everything allowed | every request except `login` answers `401` |
+
+**login**: send the Supabase access token from the portal's session:
+```json
+{"REQUESTID": 1, "MESSAGE": {"METHOD": "POST", "INFO": "login", "PARAMS": {"TOKEN": "<supabase access_token>"}}}
+```
+```json
+{"Response Code": "200", "MESSAGE": {"USER": {"id": 22, "NAME": "Ada Lovelace", "ROLE": "student", "AUTH_ID": "<uuid>", "EMAIL": "ada@example.com", "CREATED_AT": "..."}}, "REQUESTID": 1}
+```
+`AuthService.py` asks Supabase who the token belongs to (`401` if invalid). The `USER` table has no email/auth column, so the link is kept in the auth user's **`app_metadata.user_row_id`** (only the service key can write it). On a first login a `USER` row is created from the sign-up names with role `student`. To point a login at an existing row (e.g. seeded test data), run `py Server/linkAuthUser.py <email> <USER id>`.
+
 **Limitations to plan around**
-- **Raw TCP sockets cannot be opened from a browser.** If the Login, Dashboard, and Report pages are web pages, they need a WebSocket or HTTP layer in front of this server. Python and desktop clients can use the socket directly.
+- **Raw TCP sockets cannot be opened from a browser.** Browser pages use the WebSocket in 6.1. Python and desktop clients can use the TCP socket directly.
 - **File uploads** (assignments, submissions) should not travel through this socket. Upload to Supabase Storage and send only the resulting link (Section 7).
 - **The server never times out idle clients.** Each open connection holds a thread until the client disconnects.
 
@@ -401,10 +490,10 @@ To add a POST endpoint, add a branch to `Server.handle_post` (or a `POST_ROUTES`
 
 | Interface Description function | Status / proposed endpoint | Handler work needed |
 |---|---|---|
-| `OnLogin` (cookie/UID → account info) | `GET userInfo` exists; **no identity check** | Token verification via Supabase Auth |
+| `OnLogin` (cookie/UID → account info) | **Done (WebSocket)**: `POST login` verifies the Supabase token (Section 6.1) | TCP clients still send `USERID` unchecked |
 | `getDashboard` (UID → courses + assignments) | Not built; proposed `GET dashboard` | Combine `getEnrollmentByUser` → `getCoursebyId` → `getAssignmentByCourse` |
 | `uploadAssignment` | Not built; `POST AssignmentInfo` | `createAssignment`; file in Storage, link in `resource_link` |
-| `UploadSubmission` | Not built; `POST Submission` | `createSubmission`; file in Storage, link in `Submission_link` |
+| `UploadSubmission` | **Done**: `POST createSubmission` (Section 5.4) | — |
 | `getAssignment` (assignment + submissions) | Assignment part done; submissions not exposed | `getSubmissionsByAssignment` |
 | `GetReportInfo` | `reportInfo` returns `501` | `getSubmission` + `getAiConversation`, plus a GET route |
 | `SendMessage` / `getMessage` (AI) | **Done**: `sendAIMessage` / `startAIConversation` | — |
@@ -441,7 +530,7 @@ The behaviour in this document assumes these corrections. Without them the serve
 ### 8.2 Open issues
 
 - **Responses column name must match the database.** `start_conversation` and `send_message` read the history with `.get("Responses")`. If the real column is spelled `Respnses` (as the handler constant suggested), resumed conversations will come back **empty** and the model will lose its context. Rename the column or match the key, and keep both AIService calls consistent with `DataBaseHandler`.
-- **No authentication.** `USERID` is trusted as sent. Anyone who can connect can read any user's data via GET, and can use any student's AI conversation by sending that student's ID. Verify a Supabase Auth token per connection before real data is stored.
+- **No authentication on TCP.** (The browser WebSocket requires `login`, Section 6.1.) On the TCP socket `USERID` is still trusted as sent. Anyone who can connect can read any user's data via GET, and can use any student's AI conversation by sending that student's ID. Verify a Supabase Auth token per connection before real data is stored.
 - **Handshake ack is discarded** (Section 3). Either keep requiring the ack, or have the server answer the first message when it isn't a handshake.
 - **Database errors returned as dicts become `200`** (Section 4.3). Have handler methods raise, or return a `{"Response Code": "500", …}` dict, which the server passes through as-is.
 - **`500` errors lack `original Message`.** Pass `original` to `self.error(...)` in the database `except` block for consistent errors.

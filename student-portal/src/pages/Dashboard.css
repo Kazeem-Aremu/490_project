@@ -1,0 +1,83 @@
+/* Student dashboard styles (kept from the Understanding Review prototype's light UMES look:
+   maroon + cream, rounded white cards). Scoped under .ur-page so it can't clash with the other pages. */
+.ur-page{
+  --bg:#f1efec; --panel:#ffffff; --fg:#1d1a18; --muted:#6b655f; --line:#e7e3de; --rail:#e9e6e2;
+  --accent:#7a1530; --accent-fg:#ffffff; --accent-soft:#f5e8ec;
+  --gold:#d9a42b;
+  --ok:#166534; --ok-soft:#e4f3e7; --bad:#a3195f; --bad-soft:#fdeef5; --warn:#6b4300; --warn-soft:#f6e7c8; --info:#1a458a; --info-soft:#eaf0fb; --mute-soft:#ebe8e9;
+  --code-bg:#f6f4f1;
+  --font-body:'Inter',system-ui,sans-serif; --font-head:'Inter',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:light;
+}
+.ur-page, .ur-page *{box-sizing:border-box}
+.ur-page{min-height:100vh;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14.5px;line-height:1.55;letter-spacing:normal;padding:0;margin:0}
+.ur-page h1,.ur-page h2,.ur-page h3{font-family:var(--font-head);margin:0;text-wrap:balance;letter-spacing:-.01em;color:inherit}
+.ur-page h1{font-size:1.9rem;line-height:1.15;font-weight:700} .ur-page h2{font-size:1.25rem;font-weight:700} .ur-page h3{font-size:1rem;font-weight:700}
+.ur-page p{margin:0 0 10px;max-width:70ch}
+.ur-page button{font:inherit;cursor:pointer}
+.ur-page .mono{font-family:var(--font-mono);font-size:.85em}
+.ur-page .muted{color:var(--muted)}
+.ur-page .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;background:var(--bg);flex-wrap:wrap}
+.ur-page .brand{font-family:var(--font-head);font-weight:800;font-size:1.05rem;display:flex;align-items:center;gap:10px}
+.ur-page .brand::before{content:"U";width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.ur-page .who{display:flex;gap:10px;align-items:center;font-size:.88rem;flex-wrap:wrap}
+.ur-page .shell{display:block;min-height:calc(100vh - 100px);padding:0 20px}
+.ur-page .rail{background:var(--rail);border-radius:99px;padding:4px;display:inline-flex;flex-direction:row;gap:2px;margin:4px 0 18px;flex-wrap:wrap}
+.ur-page .rail button{text-align:left;background:transparent;border:0;border-radius:99px;padding:8px 18px;color:var(--muted);font-weight:600;font-size:.88rem}
+.ur-page .rail button:hover{color:var(--fg)}
+.ur-page .rail button.on{background:var(--fg);color:#fff}
+.ur-page .main{padding:0 0 48px;min-width:0;max-width:1180px;margin:0 auto}
+.ur-page .head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ur-page .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px;min-width:0}
+.ur-page .card h3{margin-bottom:10px}
+.ur-page .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:14px}
+.ur-page .grid .card{margin:0}
+.ur-page .stat{font-family:var(--font-head);font-size:2.4rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ur-page .pill{display:inline-block;font-size:.74rem;font-weight:700;padding:3px 11px;border-radius:99px;white-space:nowrap}
+.ur-page .p-ok{background:var(--ok-soft);color:var(--ok)} .ur-page .p-bad{background:var(--bad-soft);color:var(--bad)} .ur-page .p-warn{background:var(--warn-soft);color:var(--warn)} .ur-page .p-info{background:var(--info-soft);color:var(--info)} .ur-page .p-mute{background:var(--mute-soft);color:var(--muted)}
+.ur-page .btn{background:var(--accent);color:var(--accent-fg);border:1px solid var(--accent);border-radius:10px;padding:8px 16px;font-weight:700}
+.ur-page .btn:hover{filter:brightness(1.1)}
+.ur-page .btn.sec{background:#fff;color:var(--accent);border-color:var(--line)}
+.ur-page .btn.sm{padding:4px 11px;font-size:.82rem;border-radius:8px}
+.ur-page .btn[disabled]{opacity:.45;cursor:not-allowed}
+.ur-page .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ur-page .scroll{overflow-x:auto}
+.ur-page table{border-collapse:collapse;width:100%;font-size:.88rem}
+.ur-page th,.ur-page td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--line)}
+.ur-page th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.ur-page tr.click{cursor:pointer} .ur-page tr.click:hover{background:var(--accent-soft)}
+.ur-page input,.ur-page select,.ur-page textarea{font:inherit;color:var(--fg);background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-width:100%}
+.ur-page textarea{width:100%;font-family:var(--font-mono);font-size:.85rem;line-height:1.45}
+.ur-page label{display:block;font-size:.8rem;font-weight:700;margin:10px 0 4px}
+.ur-page pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.45}
+.ur-page .note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:9px 12px;border-radius:0 10px 10px 0;margin:10px 0;max-width:78ch}
+.ur-page .note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.ur-page .note.bad{border-color:var(--bad);background:var(--bad-soft)}
+.ur-page .note.ok{border-color:var(--ok);background:var(--ok-soft)}
+.ur-page .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.ur-page .tl{list-style:none;margin:0;padding:0}
+.ur-page .tl li{padding:6px 0 6px 14px;border-left:2px solid var(--line);position:relative}
+.ur-page .tl li::before{content:"";position:absolute;left:-5px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.ur-page .tl .t{font-size:.76rem;color:var(--muted)}
+.ur-page .bar{height:8px;background:var(--mute-soft);border-radius:99px;overflow:hidden}
+.ur-page .bar>span{display:block;height:100%;background:var(--accent)}
+.ur-page .toast{position:fixed;right:16px;bottom:16px;background:var(--fg);color:#fff;padding:9px 14px;border-radius:10px;font-size:.88rem;z-index:20;max-width:80vw}
+.ur-page .q{font-size:1.02rem;font-weight:600;margin:6px 0 8px;max-width:70ch}
+.ur-page .turn{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.ur-page .kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 12px;font-size:.88rem}
+.ur-page .kv dt{color:var(--muted)} .ur-page .kv dd{margin:0}
+.ur-page :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:760px){
+  .ur-page .rail{display:flex;overflow-x:auto;max-width:100%}
+  .ur-page .rail button{white-space:nowrap}
+  .ur-page .shell{padding:0 12px}
+  .ur-page .kv{grid-template-columns:1fr}
+}
+/* Teacher dashboard: class list and the "Add students" picker */
+.ur-page .roster,.ur-page .picker{list-style:none;margin:6px 0;padding:0}
+.ur-page .roster li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.ur-page .picker{max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px}
+.ur-page .picker label{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:500;margin:0;padding:6px 0;cursor:pointer}
+.ur-page .picker input{width:auto}
+.ur-page .new-asg{margin-top:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--code-bg)}
+.ur-page .new-asg input[type=file]{width:100%;background:#fff}
