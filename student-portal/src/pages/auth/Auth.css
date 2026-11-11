@@ -170,6 +170,7 @@ button, input {
   background: none;
   font-size: 12px;
   color: #3265a6;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -211,6 +212,7 @@ button, input {
   background: none;
   color: #3265a6;
   font-weight: bold;
+  text-decoration: none;
   cursor: pointer;
 }
 

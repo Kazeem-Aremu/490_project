@@ -137,9 +137,14 @@ Then sign in as the teacher and add Alan to the mock class under **Classes and S
 
 | Route | Who | Page file |
 |---|---|---|
-| `/` | everyone | `pages/Login.tsx`: sign in, sign up (with the Student/Teacher choice), forgot and reset password |
+| `/login` | everyone | `pages/auth/Login.tsx`: sign in |
+| `/signup` | everyone | `pages/auth/Signup.tsx`: sign up, with the Student/Teacher choice |
+| `/forgot-password` | everyone | `pages/auth/ForgotPassword.tsx`: sends the reset email |
+| `/reset-password` | from the reset email | `pages/auth/ResetPassword.tsx`: choose a new password |
 | `/dashboard` | signed in | `pages/Dashboard.tsx` picks `TeacherDashboard.tsx` for teachers, and shows the student view otherwise |
 | `/chat` | signed in | `pages/ChatBox.tsx`: the AI chat |
+
+The four sign-in pages share `pages/auth/AuthLayout.tsx`, which draws the two-panel card and sends signed-in users to `/dashboard` (except on `/reset-password`). Any other address goes to `/login`.
 
 ---
 
@@ -148,7 +153,7 @@ Then sign in as the teacher and add Alan to the mock class under **Classes and S
 ```mermaid
 flowchart LR
     subgraph Browser["Browser: student-portal (React + TypeScript, Vite)"]
-        Login["Login.tsx"]
+        Login["auth/ pages<br/>Login, Signup, Forgot/Reset"]
         Dash["Dashboard.tsx / TeacherDashboard.tsx"]
         Chat["ChatBox.tsx"]
     end
@@ -235,7 +240,8 @@ flowchart LR
         ├── contexts/            ClientContextProvider (WebSocket + request()), AuthContext (session + server user)
         ├── api/assignments.ts   load assignments, open files, base64 helper
         ├── components/          SiteNav (top nav), FileLinks (View assignment / rubric)
-        └── pages/               Login, Dashboard (+ .css), TeacherDashboard, ChatBox (+ .css)
+        └── pages/               Dashboard (+ .css), TeacherDashboard, ChatBox (+ .css)
+            └── auth/            AuthLayout, Login, Signup, ForgotPassword, ResetPassword, Auth.css, authMessages.ts
 ```
 
 Note: the root `.gitignore` ignores **every** folder named `lib/` (a Python template rule). Don't put frontend code in a `lib/` folder, or git will skip it.
@@ -329,7 +335,7 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 
 | Epic / workstream | Feature | Status | Notes |
 |---|---|---|---|
-| WS1 Identity and portal | Sign up / sign in / password reset | ✅ | Supabase Auth |
+| WS1 Identity and portal | Sign up / sign in / password reset | ✅ | Supabase Auth; separate pages per route |
 | | Student or teacher role at sign-up | ✅ | Self-chosen, not verified |
 | | Accounts without email (dev) | ✅ | `createTestUser.py` |
 | | Student dashboard: assignments, upload | ✅ | |
@@ -359,7 +365,9 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 | Oct 22–23 | Supabase sessions; forgot-password page; server documentation; router contract v0.1 → v0.2 with 11 tests | Kazeem Aremu, Portia Ogbuja, Nyles Burton, Ayo Omotola |
 | Oct 29 | Router v0.2 endpoint, scenario results, wired into the prototype | Ayo Omotola |
 | Nov 5–6 | AI tutor conversations (OpenAI), agent interface; Supabase connection fixes; AI chat page | Nyles Burton, Kazeem Aremu, Osaosemwen Osifo |
+| Nov 6 | Login pages split into routes with React Router (`student-dashboard` branch) | Portia Ogbuja |
 | Nov 10 | Instructor dashboard restyle (UMES look), PR #1 merged | Ayo Omotola |
+| Nov 11 | Login pages connected to Supabase; reset-password page (`student-dashboard`) | Portia Ogbuja |
 | Nov 11 | Server bug fixes; React + TypeScript portal; WebSocket bridge with verified sign-in; submissions to Storage | Nyles Burton |
 | Nov 11 | Demo data removed; login → dashboard → chat flow; student/teacher sign-up; teacher class and roster management; assignment and rubric uploads read by the AI; dashboards in the redesign layout; `createTestUser.py`; this document | Nyles Burton (branch `portal-dashboard-ai-tutor`, not yet merged into `main`) |
 
@@ -370,7 +378,7 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 - Have an assignment PDF and a rubric DOCX ready, plus a small Python file with one bug.
 
 **Steps:**
-1. **Sign up screen:** point out the Student/Teacher choice. Sign in as the **teacher**.
+1. **Sign up page (`/signup`):** point out the Student/Teacher choice. Then sign in as the **teacher** at `/login`.
 2. **Overview tab:** the stat cards and roster.
 3. **Classes and Students:** create a class live, then tick the student and **Add selected**.
 4. **Assignment Setup:** **New assignment** with the PDF and the rubric, then **View rubric**.
@@ -434,6 +442,7 @@ Add new entries at the top. Keep each one to one or two lines and link to the fi
 
 | Date | Change |
 |---|---|
+| 2026-11-11 | Merged Portia's `student-dashboard` branch: the sign-in screen is now separate pages (`/login`, `/signup`, `/forgot-password`, `/reset-password`) in a shared `AuthLayout`. Converted them to TypeScript and added the Student/Teacher choice, the dashboard redirect, and a clear message for Supabase's email rate limit (`pages/auth/authMessages.ts`). Removed the old single `pages/Login.tsx`. |
 | 2026-11-11 | All of the work below committed on branch `portal-dashboard-ai-tutor` (`main` unchanged).
 | 2026-11-11 | Created this document. Added `Server/createTestUser.py` (confirmed accounts without email). |
 | 2026-11-11 | Dashboards rebuilt in the instructor-redesign layout (top bar, pill tabs, stat cards). Teacher tabs: Overview / Classes and Students / Assignment Setup. |

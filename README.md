@@ -56,6 +56,6 @@ Browser (student-portal, Vite)                     Python (Server/)
 
 | Page | What it is |
 |---|---|
-| `/` | Login / sign up / forgot password (Supabase Auth). Signing in goes to the dashboard. |
+| `/login`, `/signup`, `/forgot-password`, `/reset-password` | Sign in pages (Supabase Auth) in a shared layout (`pages/auth/`). Sign up has the Student/Teacher choice. Signing in goes to the dashboard; any other address goes to `/login`. |
 | `/dashboard` | Laid out like the instructor dashboard redesign (UMES top bar, pill tabs, stat cards). **Teachers** (tabs Overview / Classes and Students / Assignment Setup): **Create class** (`createCourse`), **New assignment** with an optional PDF/DOCX assignment sheet and rubric (`createAssignment`; the AI tutor reads both), their classes, assignments and enrolled students; **Add students** enrolls the ticked students (`StudentList`, `enrollStudent`, `unenrollStudent`). **Students:** their assignments (`Enrollement` → `getCourseInfo` → `AssignmentInfo`). **View assignment / View rubric** open the teacher's files (`assignmentFile`). **Upload work** sends the file to the server (`createSubmission`); **Chat about this assignment** opens it in `/chat`. |
 | `/chat` | AI chat: code checks, snapshot, and the AI tutor (`startAIConversation`, then `sendAIMessage`). Opened from the dashboard it starts (or resumes) the tutor on that upload. A file attached with 📎 can also be sent with **Start AI tutor on this file**. |

@@ -11,7 +11,7 @@ export default function SiteNav() {
 
   async function onSignOut() {
     await signOut();
-    navigate("/");
+    navigate("/login");
   }
 
   return (
