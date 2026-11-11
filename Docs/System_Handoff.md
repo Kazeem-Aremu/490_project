@@ -367,9 +367,12 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 | Nov 5–6 | AI tutor conversations (OpenAI), agent interface; Supabase connection fixes; AI chat page | Nyles Burton, Kazeem Aremu, Osaosemwen Osifo |
 | Nov 6 | Login pages split into routes with React Router (`student-dashboard` branch) | Portia Ogbuja |
 | Nov 10 | Instructor dashboard restyle (UMES look), PR #1 merged | Ayo Omotola |
+| Nov 11 | Release notes v1 and v2 added to `Docs/` | Misael Ramos (git: misaram1904) |
 | Nov 11 | Login pages connected to Supabase; reset-password page (`student-dashboard`) | Portia Ogbuja |
 | Nov 11 | Server bug fixes; React + TypeScript portal; WebSocket bridge with verified sign-in; submissions to Storage | Nyles Burton |
 | Nov 11 | Demo data removed; login → dashboard → chat flow; student/teacher sign-up; teacher class and roster management; assignment and rubric uploads read by the AI; dashboards in the redesign layout; `createTestUser.py`; this document | Nyles Burton (branch `portal-dashboard-ai-tutor`, not yet merged into `main`) |
+
+**About the release notes:** `Docs/RELEASE_NOTES_v2.md` describes Team 1's **prototype v0.1**, in which the evaluator and the AI were simulated (fixed questions, keyword scoring, demo accounts). On branch `portal-dashboard-ai-tutor` that prototype was removed from the portal and replaced by the real flow in this document: Supabase accounts, real classes and assignments, and a live AI tutor. The prototype is still in git history: `Understanding_Review_Prototype.html` at commit `036b19a`. A v3 release note could summarize the Weeks 11+ work from [12. Changelog](#12-changelog).
 
 ### 10.3 Demo script (about 5 minutes)
 
@@ -442,6 +445,7 @@ Add new entries at the top. Keep each one to one or two lines and link to the fi
 
 | Date | Change |
 |---|---|
+| 2026-11-11 | Merged the latest `main` into the branch: Team 1 release notes v1 and v2 (`Docs/RELEASE_NOTES_v*.md`). |
 | 2026-11-11 | Merged Portia's `student-dashboard` branch: the sign-in screen is now separate pages (`/login`, `/signup`, `/forgot-password`, `/reset-password`) in a shared `AuthLayout`. Converted them to TypeScript and added the Student/Teacher choice, the dashboard redirect, and a clear message for Supabase's email rate limit (`pages/auth/authMessages.ts`). Removed the old single `pages/Login.tsx`. |
 | 2026-11-11 | All of the work below committed on branch `portal-dashboard-ai-tutor` (`main` unchanged).
 | 2026-11-11 | Created this document. Added `Server/createTestUser.py` (confirmed accounts without email). |
@@ -459,6 +463,7 @@ Add new entries at the top. Keep each one to one or two lines and link to the fi
 | Document | Use it for |
 |---|---|
 | `README.md` | Short run instructions |
+| `Docs/RELEASE_NOTES_v1.md`, `Docs/RELEASE_NOTES_v2.md` | Team 1 release notes: v1 (Weeks 1-5, planning) and v2 (Weeks 6-10, design + simulated prototype v0.1). See the note in [10.2](#102-timeline-from-git-history). |
 | `Docs/Server_API_Documentation.md` | Every server request, with examples; server known issues |
 | `Docs/Architecture_Models_v1.md` | Context, component and state models (design) |
 | `Docs/Interface.md`, `Docs/MessageDefenitions.md` | The original interface design (names differ from the final code) |
