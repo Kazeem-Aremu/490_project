@@ -26,7 +26,7 @@ button{font:inherit;cursor:pointer}
 .brand::before{content:"U";width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
 .who{display:flex;gap:10px;align-items:center;font-size:.88rem;flex-wrap:wrap}
 .shell{display:block;min-height:calc(100vh - 100px);padding:0 20px}
-.rail{background:var(--rail);border-radius:99px;padding:4px;display:inline-flex;flex-direction:row;gap:2px;margin:4px 0 18px;flex-wrap:wrap}
+.rail{background:var(--rail);border-radius:99px;padding:4px;display:flex;flex-direction:row;gap:2px;margin:4px auto 18px;flex-wrap:wrap;width:max-content;max-width:1180px}
 .rail button{text-align:left;background:transparent;border:0;border-radius:99px;padding:8px 18px;color:var(--muted);font-weight:600;font-size:.88rem}
 .rail button:hover{color:var(--fg)}
 .rail button.on{background:var(--fg);color:#fff}
@@ -75,7 +75,7 @@ pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;pa
 .kv dt{color:var(--muted)} .kv dd{margin:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:760px){
-  .rail{display:flex;overflow-x:auto;max-width:100%}
+  .rail{display:flex;overflow-x:auto;max-width:100%;width:auto}
   .rail button{white-space:nowrap}
   .shell{padding:0 12px}
   .kv{grid-template-columns:1fr}
@@ -658,9 +658,9 @@ function render(){
   else{
     const u=UI.user;
     html+='<div class="topbar"><div class="brand">Understanding Review</div><div class="who"><span>'+esc(u.name)+'</span>'+pill('info',u.role)+'<button class="btn sec sm" onclick="logout()">Sign out</button></div></div>';
-    html+='<div class="shell"><nav class="rail" aria-label="Sections">'+NAV[u.role].map(([id,l])=>'<button class="'+(UI.view===id?'on':'')+'" onclick="go(\''+id+'\')">'+l+'</button>').join('')+'</nav><main class="main">'+(VIEWS[UI.view]?VIEWS[UI.view]():'')+'</main></div>';
+    html+='<div class="shell"><nav class="rail" aria-label="Sections">'+NAV[u.role].map(([id,l])=>'<button class="'+(UI.view===id?'on':'')+'"'+(UI.view===id?' aria-current="page"':'')+' onclick="go(\''+id+'\')">'+l+'</button>').join('')+'</nav><main class="main">'+(VIEWS[UI.view]?VIEWS[UI.view]():'')+'</main></div>';
   }
-  if(UI.toast)html+='<div class="toast" role="status">'+esc(UI.toast)+'</div>';
+  if(UI.toast)html+='<div class="toast" role="status" aria-live="polite">'+esc(UI.toast)+'</div>';
   app.innerHTML=html;
 }
 render();
