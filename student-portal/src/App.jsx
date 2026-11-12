@@ -1,7 +1,6 @@
-import { useState } from "react";
+import Chatbox from "./Chatbox";
+import { useEffect, useState } from "react";
 import "./App.css";
-import { supabase } from './supabaseClient'
-import {WebSocketProvider, useWebSocket} from "./contexts/ClientContextProvider"
 const headings = {
   login: {
     title: "Welcome back!",
@@ -21,6 +20,12 @@ const headings = {
 };
 
 function App() {
+  const [chatOpen, setChatOpen] = useState(window.location.hash === '#chat');
+  useEffect(() => {
+    const onHash = () => setChatOpen(window.location.hash === '#chat');
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const [view, setView] = useState("login");
   const [message, setMessage] = useState("");
 
@@ -28,7 +33,6 @@ function App() {
   const isForgot = view === "forgot";
 
   //Server message Sending
-  const {messages, sendMessage, isConnected} = useWebSocket();
   
   function handleSubmit(event) {
     event.preventDefault();
@@ -44,6 +48,7 @@ function App() {
     setMessage("");
   }
 
+  if (chatOpen) return <Chatbox />;
   return (
       <main className="page">
         <section className="auth-card">
@@ -149,6 +154,7 @@ function App() {
               </p>
             )}
 
+            <a href="#chat">Open assignment chat (local integration preview)</a>
             <p className="legal-text">Student Login/Signup Page Prototype</p>
           </div>
         </section>

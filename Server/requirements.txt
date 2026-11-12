@@ -1,0 +1,4 @@
+supabase
+python-dotenv
+openai
+websockets>=14,<16
