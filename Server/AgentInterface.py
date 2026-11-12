@@ -1,10 +1,8 @@
 """
-Ms. Leslie purchased the team seats but didn't load any credit into our API account.
-What i will do is set this up using Open AI api to get over these issues and set it up later.
-This solution should be relativly easy to correct when we are able too.
-
+Switched from the OpenAI stopgap to the Anthropic API now that the school
+Claude account has credit. See git history for the prior OpenAI version.
 """
-from openai import OpenAI
+from anthropic import Anthropic
 from dotenv import load_dotenv
 import json
 import os
@@ -65,8 +63,8 @@ class Teacher:
     def __init__(self,system_prompt, history = None, max_tokens = 4000):
         load_dotenv()
         self.system_prompt = system_prompt
-        self.CLIENT = OpenAI(api_key=os.environ.get("OPEN_AI_KEY"))
-        self.MODEL = "gpt-5-mini"
+        self.CLIENT = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        self.MODEL = "claude-sonnet-5-5"
         self.max_tokens = max_tokens
         self.history = list(history) if history else []
         self.tokens_used = 0
@@ -84,8 +82,11 @@ class Teacher:
         return self.respond()
 
     def complete(self, system, messages):
-        response = self.CLIENT.chat.completions.create(
+        response = self.CLIENT.messages.create(
             model = self.MODEL,
-            messages = [{"role":"system", "content":system}] + messages,
-            max_completion_tokens = self.max_tokens)
-        return response.choices[0].message.content, response.usage.total_tokens
+            system = system,
+            messages = messages,
+            max_tokens = self.max_tokens)
+        text = "".join(block.text for block in response.content if block.type == "text")
+        tokens = response.usage.input_tokens + response.usage.output_tokens
+        return text, tokens
