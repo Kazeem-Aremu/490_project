@@ -16,7 +16,7 @@ export default function Chatbox() {
   async function start(event) {
     event.preventDefault();
     if (lock.current || !positiveID(userID) || !positiveID(submissionID)) return;
-    lock.current = true; setBusy(true); setError(''); setConversation(null); setMessages([]);
+    lock.current = true; setBusy(true); setError('');
     try {
       const data = await request({MESSAGE:{METHOD:'POST', INFO:'startAIConversation', PARAMS:{USERID:Number(userID), SUBMISSIONID:Number(submissionID)}}});
       if (!Number.isSafeInteger(data?.CONVOID) || !Array.isArray(data.MESSAGES)) throw new Error('Unexpected conversation response');
@@ -43,8 +43,8 @@ export default function Chatbox() {
     <div className="work"><div className="card"><h2>Open your submission</h2>
       <p>Local integration preview: enter existing database IDs. The server loads the submitted file. These fields do not sign you in.</p>
       <form className="submission-form" onSubmit={start}>
-        <label>Student ID<input required inputMode="numeric" value={userID} disabled={busy} onChange={e => {setUserID(e.target.value);setConversation(null);setMessages([]);}} /></label>
-        <label>Submission ID<input required inputMode="numeric" value={submissionID} disabled={busy} onChange={e => {setSubmissionID(e.target.value);setConversation(null);setMessages([]);}} /></label>
+        <label>Student ID<input required inputMode="numeric" value={userID} disabled={busy} onChange={e => {setUserID(e.target.value);setConversation(null);setMessages([]);setText('');setError('');}} /></label>
+        <label>Submission ID<input required inputMode="numeric" value={submissionID} disabled={busy} onChange={e => {setSubmissionID(e.target.value);setConversation(null);setMessages([]);setText('');setError('');}} /></label>
         <button className="btn" disabled={busy || !isConnected || !positiveID(userID) || !positiveID(submissionID)}>Open / resume conversation</button>
       </form>
       <p role="status">{isConnected ? 'Connected to local bridge' : 'Disconnected — start the backend and bridge, then reload.'}</p>
