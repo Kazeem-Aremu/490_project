@@ -1,7 +1,7 @@
 # System Handoff and Reference
 
 **Project:** AI-Assisted Assignment Understanding Review (CSDP 490, Team 1 and Team 2)
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-12
 **Status:** Working end to end on one machine (localhost). Not deployed.
 
 This is a **living document**. It records what the system does today, how it works, and what is left to do. It is written for:
@@ -50,7 +50,7 @@ The project checks whether students **understand** the code they submit, instead
 
 ## 2. Quick start
 
-You need **Python 3** (developed on 3.15), **Node** (developed on 24), and access to the team's **Supabase** project and an **OpenAI API key**.
+You need **Python 3** (developed on 3.15), **Node** (developed on 24), and access to the team's **Supabase** project and an **Anthropic API key** (Claude).
 
 ### 2.1 Server (`Server/`)
 
@@ -58,12 +58,13 @@ You need **Python 3** (developed on 3.15), **Node** (developed on 24), and acces
    ```
    SUPABASE_URL=https://<project>.supabase.co
    SUPABASE_SECRET_KEY=<service role key>      # full database access: server only
-   OPEN_AI_KEY=<OpenAI API key>
+   ANTHROPIC_API_KEY=<Anthropic API key>    # the AI tutor (Claude)
    ```
 2. Install the packages and start the server:
    ```
-   pip install supabase python-dotenv openai websockets pypdf python-docx
-   py Server/SocketServer.py
+   cd Server
+   pip install -r requirements.txt   # anthropic, supabase, websockets, pypdf, python-docx, ...
+   py SocketServer.py
    ```
    This starts **two** listeners:
    - `ws://127.0.0.1:8343` (WebSocket), which the portal uses.
@@ -171,7 +172,7 @@ flowchart LR
     SupaAuth[("Supabase Auth")]
     SupaDB[("Supabase Postgres")]
     SupaSt[("Supabase Storage<br/>submissions, assignments")]
-    OpenAI(["OpenAI API<br/>gpt-5-mini"])
+    Claude(["Anthropic API<br/>Claude Sonnet 5.5"])
 
     Login -- sign in / sign up --> SupaAuth
     Dash & Chat -- JSON requests --> WS
@@ -181,7 +182,7 @@ flowchart LR
     Core --> Sub & Teach & Asg & AI & DB
     Sub & Asg --> SupaSt
     DB --> SupaDB
-    AI --> OpenAI
+    AI --> Claude
 ```
 
 **How a request flows:**
@@ -200,7 +201,7 @@ flowchart LR
 | WebSocket next to the TCP port | Browsers can't open raw TCP sockets. Both ports share one request handler. |
 | Files uploaded **through the server** | No Supabase Storage security rules to maintain. The server checks enrollment and course ownership first. |
 | Assignment and rubric text extracted when uploaded | The AI gets plain text; PDF and DOCX are converted once, not on every message. |
-| OpenAI instead of Claude, for now | The team chose Claude (`Docs/Hint Validator`), but the Anthropic account has no API credit. Every AI call goes through `Teacher.complete()`, so switching back only touches `AgentInterface.py`. |
+| Claude (Anthropic API) for the tutor | The team chose Claude because it kept to the no-answers rule in testing (`Docs/Hint Validator`). Until the school account had API credit the tutor ran on OpenAI; every AI call goes through `Teacher.complete()`, so the switch (PR #5, Nov 12) touched only `AgentInterface.py`. |
 
 ---
 
@@ -227,7 +228,8 @@ flowchart LR
 │   ├── TeacherService.py        createCourse, StudentList, enroll / unenroll
 │   ├── AssignmentService.py     createAssignment (PDF/DOCX -> "assignments" bucket + text), assignmentFile
 │   ├── AIService.py             tutor conversations: permission checks, history, token limits
-│   ├── AgentInterface.py        tutor prompts + the OpenAI call (Teacher class)
+│   ├── AgentInterface.py        tutor prompts + the Claude API call (Teacher class)
+│   ├── requirements.txt         Python packages: pip install -r requirements.txt
 │   ├── createTestUser.py, mockClass.py, linkAuthUser.py, databbaseSeeder.py   data scripts
 │   ├── driver.py, testClient.py, seedDatabaseTest.py, charAuthTest.py         test and debug scripts
 │   └── DatabaseRequestServer.py LEGACY Flask API, not used by the portal
@@ -321,7 +323,7 @@ Supabase Auth keeps each account's `user_metadata` (`first_name`, `last_name`, `
 - Use the rubric to point out criteria the work doesn't meet yet, and **never give a grade, score or points**.
 - The assignment, rubric and submission are fenced off as data (`<<<BEGIN ...>>>`) so the model doesn't follow instructions hidden inside them.
 
-**Model:** OpenAI `gpt-5-mini` with `max_completion_tokens=4000`. That limit includes the model's hidden reasoning, so if replies come back empty, raise it.
+**Model:** Claude Sonnet 5.5 (`claude-sonnet-5-5`) through the Anthropic Python SDK, with `max_tokens=4000`. The key comes from `ANTHROPIC_API_KEY` in `Server/.env`. Only the reply's text blocks are kept, and `Tokens_used` adds up input and output tokens. If replies come back empty or cut off (the server answers `502`), raise `Teacher.max_tokens`: the model's thinking counts toward that limit.
 
 **Not built yet:** the hint ladder and hint validator (`Docs/Feedback_Boundaries.md`, `Docs/Hint Validator`) and scored understanding questions. Today, only the prompt rules stop the tutor from giving answers away.
 
@@ -346,10 +348,10 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 | | Edit / delete classes and assignments | ⬜ | |
 | | Overview (stat cards, roster) | ✅ | Instructor-redesign layout |
 | | Reports / per-student records (submissions, results) | ⬜ | Needs a submissions-list request |
-| WS3 AI | AI tutor chat on a submission | ✅ | OpenAI for now |
+| WS3 AI | AI tutor chat on a submission | ✅ | Claude (Anthropic API) |
 | | Tutor uses the assignment and rubric | ✅ | |
 | | Hint ladder + hint validator | ⬜ | Designed in `Docs/` |
-| | Switch to Claude | ⬜ | Waiting on API credit |
+| | Switch to Claude | ✅ | Claude Sonnet 5.5 since Nov 12 (PR #5) |
 | WS2 Evaluator and router (Team 1) | Router v0.2 rules + 11 tests | 🟡 | `Router/`, not connected to the server |
 | | Sandboxed test runner (real grading) | ⬜ | The chat's checks are only pattern checks |
 | WS4 Review sessions | Scored understanding questions, retry, escalation | ⬜ | Was only in the old simulated prototype |
@@ -368,6 +370,7 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 | Nov 6 | Login pages split into routes with React Router (`student-dashboard` branch) | Portia Ogbuja |
 | Nov 10 | Instructor dashboard restyle (UMES look), PR #1 merged | Ayo Omotola |
 | Nov 11 | Release notes v1 and v2 added to `Docs/` | Misael Ramos (git: misaram1904) |
+| Nov 12 | AI tutor switched from OpenAI to Claude (PR #5); `Server/requirements.txt`; nav alignment and accessibility fixes (PR #3) | Ayo Omotola |
 | Nov 11 | Login pages connected to Supabase; reset-password page (`student-dashboard`) | Portia Ogbuja |
 | Nov 11 | Server bug fixes; React + TypeScript portal; WebSocket bridge with verified sign-in; submissions to Storage | Nyles Burton |
 | Nov 11 | Demo data removed; login → dashboard → chat flow; student/teacher sign-up; teacher class and roster management; assignment and rubric uploads read by the AI; dashboards in the redesign layout; `createTestUser.py`; this document | Nyles Burton (branch `portal-dashboard-ai-tutor`, not yet merged into `main`) |
@@ -397,7 +400,7 @@ Use this table for the sprint review and the product backlog. **Status:** ✅ do
 - **Security by design:** secret keys stay on the server, every connection is verified with Supabase, and the server decides who may act on which class or submission.
 - **Responsible AI:** the tutor never gives solutions or grades. Uploaded documents and student code are passed to the model as data, never as instructions.
 - **Impediments:**
-  - No Anthropic API credit, so the team switched to OpenAI behind one interface.
+  - No Anthropic API credit at first, so the team used OpenAI behind one interface; switching to Claude once credit arrived changed only `Teacher.complete()`.
   - The Supabase email limit, worked around with an admin script.
   - Integrating with Team 1: the router is ready but the grader isn't.
 - **What we'd do differently:** agree on the database schema and the request contract earlier. The design documents used different names (`instructor`/`teacher`, `uploadAssignment`/`createAssignment`) than the final code.
@@ -434,7 +437,7 @@ Roughly in priority order:
 3. **Hint ladder and validator** (`Docs/Feedback_Boundaries.md`, `Docs/Hint Validator`): check every tutor reply before the student sees it.
 4. **Teacher approval** for teacher accounts, and **permission checks on the GET lookups**.
 5. **Edit and delete** for classes and assignments; add due dates.
-6. **Switch to Claude** in `AgentInterface.Teacher.complete()` once credit is available.
+6. **Tune the Claude settings:** consider a larger `max_tokens` (about 16,000) so long replies aren't cut off, and handle a `refusal` stop reason explicitly.
 7. **Deployment:** host the portal, run the server behind HTTPS/WSS, and set up a real email (SMTP) service.
 
 ---
@@ -445,6 +448,7 @@ Add new entries at the top. Keep each one to one or two lines and link to the fi
 
 | Date | Change |
 |---|---|
+| 2026-11-12 | Merged `main` (PRs #3 and #5): the AI tutor now uses **Claude Sonnet 5.5** (`ANTHROPIC_API_KEY` replaces `OPEN_AI_KEY`); `Server/requirements.txt` added (plus `websockets`, `pypdf`, `python-docx` for this branch). The nav fix (centered tab strip, `aria-current` on the active tab) was applied to the React dashboards, since the prototype HTML it edited was retired on this branch. |
 | 2026-11-11 | Merged the latest `main` into the branch: Team 1 release notes v1 and v2 (`Docs/RELEASE_NOTES_v*.md`). |
 | 2026-11-11 | Merged Portia's `student-dashboard` branch: the sign-in screen is now separate pages (`/login`, `/signup`, `/forgot-password`, `/reset-password`) in a shared `AuthLayout`. Converted them to TypeScript and added the Student/Teacher choice, the dashboard redirect, and a clear message for Supabase's email rate limit (`pages/auth/authMessages.ts`). Removed the old single `pages/Login.tsx`. |
 | 2026-11-11 | All of the work below committed on branch `portal-dashboard-ai-tutor` (`main` unchanged).

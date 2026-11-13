@@ -355,7 +355,7 @@ export default function TeacherDashboard() {
       </div>
       <div className="shell">
         <nav className="rail" aria-label="Sections">
-          {TABS.map(([id, label]) => <button key={id} className={tab === id ? "on" : ""} onClick={() => go(id)}>{label}</button>)}
+          {TABS.map(([id, label]) => <button key={id} className={tab === id ? "on" : ""} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>{label}</button>)}
         </nav>
         <main className="main">
           {status ? <div className="note">{status}</div> : view()}

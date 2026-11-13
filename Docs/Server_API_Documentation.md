@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Server file** | `Server/SocketServer.py` (class `Server`) |
-| **AI layer** | `Server/AIService.py`, `Server/AgentInterface.py` (OpenAI, temporary) |
+| **AI layer** | `Server/AIService.py`, `Server/AgentInterface.py` (Anthropic Claude) |
 | **Database layer** | `Server/DataBaseHandler.py` (Supabase / PostgreSQL) |
 | **Transport** | TCP socket, one UTF-8 JSON object per message, each terminated by `\n`; plus a WebSocket for browsers (`Server/WebSocketServer.py`, Section 6.1) |
 | **Default address** | `127.0.0.1:8342` (TCP), `ws://127.0.0.1:8343` (WebSocket) |
@@ -30,7 +30,7 @@ SocketServer.py   Server.start()          accepts connections
                   Server.handle_Requests() → handle_get() / handle_post()
         │                                   │
         ▼                                   ▼
-DataBaseHandler.py ──► Supabase      AIService.py ──► AgentInterface.Teacher ──► OpenAI API
+DataBaseHandler.py ──► Supabase      AIService.py ──► AgentInterface.Teacher ──► Anthropic API (Claude)
   (tables + Storage)                    (auth checks, history, token limits)
 ```
 
@@ -44,15 +44,15 @@ DataBaseHandler.py ──► Supabase      AIService.py ──► AgentInterface
    ```
    SUPABASE_URL=https://<your-project>.supabase.co
    SUPABASE_SECRET_KEY=<service role key>
-   OPEN_AI_KEY=<OpenAI API key>
+   ANTHROPIC_API_KEY=<Anthropic API key>
    ```
-2. Install dependencies: `pip install supabase python-dotenv openai websockets pypdf python-docx`
+2. Install dependencies: `pip install -r Server/requirements.txt`
 3. Start the server: `py Server/SocketServer.py` (starts the TCP server on 8342 **and** the browser WebSocket on 8343)
 4. Run clients from a **second terminal**. The server must stay running.
 
 `HOST` is `127.0.0.1`, so only programs on the same machine can connect. To accept other machines, bind to `0.0.0.0` and open port 8342 in the firewall. On non-Windows systems the server sets `SO_REUSEADDR`, so it can be restarted immediately on the same port.
 
-> **About the AI provider:** the team has seats but no API credit with Anthropic yet, so `AgentInterface.Teacher` currently calls OpenAI (`gpt-5-mini`). All model calls go through `Teacher.complete()`, so switching providers later means changing only that method and the client setup in `Teacher.__init__`.
+> **About the AI provider:** `AgentInterface.Teacher` calls Anthropic's Claude (`claude-sonnet-5-5`) through the `anthropic` Python SDK. It used OpenAI (`gpt-5-mini`) as a stopgap until the school account had API credit (switched in PR #5). All model calls go through `Teacher.complete()`, so changing models or providers only touches that method and the client setup in `Teacher.__init__`.
 
 ---
 
@@ -537,7 +537,7 @@ The behaviour in this document assumes these corrections. Without them the serve
 - **`int()` accepts booleans and floats** (`true` → `1`). Reject `bool` and non-integral floats explicitly if that matters.
 - **No size limit on incoming messages.** A client that sends data without a newline grows the server's buffer forever. Cap the buffer (e.g. 1 MB) and close the connection past it.
 - **No idle timeout** on client sockets (Section 6).
-- **Reasoning-model token budget:** `gpt-5-mini` counts hidden reasoning against `max_tokens`. If replies come back empty (`502`), raise `Teacher.max_tokens` to about 4,000.
+- **Token budget:** the model's thinking counts against `max_tokens` (4,000 by default). If replies come back empty or cut off (`502`), raise `Teacher.max_tokens` (about 16,000).
 - **Unused code:** `test_response` and the `Teacher` import in `SocketServer.py`, `KIKOFF` in `AgentInterface.py`. Safe to delete.
 - **Typo in the prompt:** `TUTOR_RULES` begins `"ou are"` instead of `"You are"`.
 

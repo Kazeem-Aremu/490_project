@@ -1,0 +1,8 @@
+anthropic
+python-dotenv
+flask
+flask-cors
+supabase
+websockets
+pypdf
+python-docx

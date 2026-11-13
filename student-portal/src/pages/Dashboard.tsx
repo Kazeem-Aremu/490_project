@@ -110,7 +110,7 @@ function StudentDashboard() {
         </div>
       </div>
       <div className="shell">
-      <nav className="rail" aria-label="Sections"><button className="on">My Assignments</button></nav>
+      <nav className="rail" aria-label="Sections"><button className="on" aria-current="page">My Assignments</button></nav>
       <main className="main">
         <div className="head">
           <div>

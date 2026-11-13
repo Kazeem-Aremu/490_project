@@ -35,13 +35,13 @@ Browser (student-portal, Vite)                     Python (Server/)
   /           Sign in / sign up  ── Supabase Auth
   /dashboard  Assignments + uploads ──┐
   /chat       AI chat (AI tutor)    ──┤  WebSocket ws://127.0.0.1:8343   WebSocketServer.py ─┐
-                                      └────────────────────────────────────►                   ├─ SocketServer.Server ─► Supabase / OpenAI
+                                      └────────────────────────────────────►                   ├─ SocketServer.Server ─► Supabase / Claude
                                            TCP 127.0.0.1:8342 (test clients) ──────────────────┘
 ```
 
 1. **Server**: in `Server/`, create `.env` (see `Docs/Server_API_Documentation.md` §2), then
    ```
-   pip install supabase python-dotenv openai websockets pypdf python-docx
+   pip install -r requirements.txt   # anthropic, supabase, websockets, pypdf, python-docx, ...
    py SocketServer.py
    ```
 2. **Portal**: in `student-portal/`, put `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_…` key, never the secret key) in `.env.local`, then
