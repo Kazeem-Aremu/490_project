@@ -1,5 +1,4 @@
 import os
-from flask import jsonify
 from dotenv import load_dotenv
 from supabase import create_client, Client
 ##Not sure what to do withthese
