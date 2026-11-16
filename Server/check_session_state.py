@@ -69,8 +69,11 @@ async def check_websocket(ids, use_ai):
             print("      If the error mentions Review_Sessions, run setup_review_sessions.sql in Supabase first.")
             return
 
-        r = await call("GET", "sessionInfo", {"SUBMISSIONID": sub})
+        r = await call("GET", "sessionInfo", {"USERID": user, "SUBMISSIONID": sub})
         report("sessionInfo reads it back", ok(r) and r["MESSAGE"][0]["submission_id"] == sub, r)
+
+        r = await call("GET", "sessionInfo", {"USERID": ids["student_b"], "SUBMISSIONID": sub})
+        report("another student can't read it (403)", r.get("Response Code") == "403", r)
 
         r = await call("POST", "updateSession", {"USERID": user, "SUBMISSIONID": sub,
                                                  "current_question": 1, "questions": ["Test question 1"]})
@@ -110,7 +113,7 @@ def check_tcp(ids):
         f = s.makefile("rb")
         json.loads(f.readline())  # handshake
         s.sendall(json.dumps({"MESSAGE": {"HANDSHAKE": "ACK"}}).encode() + b"\n")
-        s.sendall(json.dumps(request("GET", "sessionInfo", {"SUBMISSIONID": ids["submission"]})).encode() + b"\n")
+        s.sendall(json.dumps(request("GET", "sessionInfo", {"USERID": ids["student_a"], "SUBMISSIONID": ids["submission"]})).encode() + b"\n")
         r = json.loads(f.readline())
         report("TCP clients still work (sessionInfo over port 8342)", ok(r), r)
 

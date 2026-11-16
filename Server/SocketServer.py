@@ -43,11 +43,10 @@ GET_ROUTES = {
     ("getCourseInfo", "CourseID"):       ("getCoursebyId",         "CourseID"),
     ("Enrollement", "Course"):           ("getEnrollmentByCourse", "CourseID"),
     ("Enrollement", "UserID"):           ("getEnrollmentByUser",   "userID"),
-    ("sessionInfo", None):               ("getSession",            "SUBMISSIONID"),
 }
 
 
-SINGLE_ITEM = {"getUser", "getCoursebyId", "getAssignment", "getSession"}
+SINGLE_ITEM = {"getUser", "getCoursebyId", "getAssignment"}
 
 NOT_IMPLEMENTED_INFO = {"reportInfo"}
 
@@ -299,6 +298,17 @@ class Server():
 
         if info in NOT_IMPLEMENTED_INFO:
             return self.error("501", f"{info} not implemented yet", original)
+
+        # Sessions hold a student's answers, so only that student may read them
+        if info == "sessionInfo":
+            params = message.get("PARAMS")
+            ids = self.int_params(params, "USERID", "SUBMISSIONID") if isinstance(params, dict) else None
+            if ids is None:
+                return self.error("400", "PARAMS needs integer USERID and SUBMISSIONID", original)
+            session, problem = self._owned_session(ids[0], ids[1], original)
+            if problem:
+                return problem
+            return {"Response Code": "200", "MESSAGE": [session]}
 
         route = GET_ROUTES.get((info, by)) or GET_ROUTES.get((info, None))
 
