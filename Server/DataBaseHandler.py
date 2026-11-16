@@ -1,5 +1,4 @@
 import os
-from flask import jsonify
 from dotenv import load_dotenv
 from supabase import create_client, Client
 ##Not sure what to do withthese
@@ -11,6 +10,7 @@ COURSE = "COURSE"
 ENROLLMENT = "Enrollment"
 SUBMISSION = "Submission"
 USER = "USER"
+SESSIONS = "Review_Sessions"
 
 #AI_CONVO Table names
 AI_CONVO_ID = "id"
@@ -48,6 +48,21 @@ USER_ID = "id"
 USER_CREATED = "CREATED_AT"
 USER_NAME = "NAME"
 USER_ROLE = "ROLE"
+#REVIEW_SESSIONS (WS4 session state, one row per submission)
+SESSION_ID = "id"
+SESSION_SUB_ID = "submission_id"
+SESSION_USER_ID = "user_id"
+SESSION_ASSIGN_ID = "assignment_id"
+SESSION_ATTEMPT = "attempt_number"
+SESSION_ROUTE = "route"
+SESSION_REASON = "reason_code"
+SESSION_PATH = "path"
+SESSION_STATUS = "status"
+SESSION_CURRENT_Q = "current_question"
+SESSION_RETRY = "retry_number"
+SESSION_QUESTIONS = "questions"
+SESSION_SCORES = "scores"
+SESSION_EVAL_VERSION = "evaluator_version"
 
 class DataBaseHandler:
     def __init__(self):
@@ -181,6 +196,7 @@ class DataBaseHandler:
     
     def createAIConversation(self, id, history, tokensUsed):
         response = self.supabase.table(AI_CONVOS).insert([{
+            AI_CONVO_ID: id,  # shared key with the submission; resume looks it up by this
             AI_CONVO_RESPONSES: history ,
             AI_CONVO_TOKENS_USED: tokensUsed, 
         }]).execute()
@@ -191,4 +207,24 @@ class DataBaseHandler:
             AI_CONVO_RESPONSES:history,
             AI_CONVO_TOKENS_USED: tokensUsed
         }).eq(AI_CONVO_ID, convoId).execute()
+        return response.data
+
+##Review sessions (WS4)
+    def getSession(self, submissionId):
+        return self._select(SESSIONS, SESSION_SUB_ID, submissionId)
+
+    def countAttempts(self, userId, assignmentId):
+        """How many sessions this student already has for this assignment."""
+        response = (self.supabase.table(SESSIONS).select(SESSION_ID)
+                    .eq(SESSION_USER_ID, userId).eq(SESSION_ASSIGN_ID, assignmentId).execute())
+        return len(response.data)
+
+    def saveSession(self, row):
+        """Create the session for row["submission_id"], or update it if it exists.
+        Columns not in `row` keep their current values."""
+        response = self.supabase.table(SESSIONS).upsert([row], on_conflict=SESSION_SUB_ID).execute()
+        return response.data
+
+    def updateSession(self, submissionId, changes):
+        response = self.supabase.table(SESSIONS).update(changes).eq(SESSION_SUB_ID, submissionId).execute()
         return response.data
