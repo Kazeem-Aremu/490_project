@@ -9,6 +9,11 @@ from DataBaseHandler import DataBaseHandler
 from AIService import AIService, make_submission_fetcher
 from AgentInterface import Teacher
 
+# WS2 router lives in the Router/ folder next to Server/
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Router"))
+from router_endpoint import handle_route_submission
+
 #HOST = "127.0.0.1"
 #PORT = 8342
 hostname = socket.socket()
@@ -149,6 +154,11 @@ class Server():
             if ids is None:
                 return self.error("400", "PARAMS needs integer USERID and CONVOID", original)
             return self.ai.send_message(ids[0], ids[1], params.get('TEXT'))
+
+        ## WS2: run the tested router and return PASS / FAIL / MANUAL_REVIEW
+        if info == "routeSubmission":
+            return handle_route_submission(original)
+
         return self.error("400", f"Unknown POST request:{info!r}", original)
 
 
