@@ -24,16 +24,11 @@ function AuthLayout() {
             Your space to learn, track your progress,
             and work toward your academic goals.
           </p>
-          <div className="welcome-footer">Insert Catchy Line Here</div>
         </div>
 
         <div className="form-panel">
           <div className="mobile-logo">H</div>
-          <p className="eyebrow form-eyebrow">Insert Title Here</p>
-
           <Outlet />
-
-          <p className="legal-text">Student Login/Signup Page Prototype</p>
         </div>
       </section>
     </main>
